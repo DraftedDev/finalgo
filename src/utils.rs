@@ -26,7 +26,6 @@ pub fn naive_to_offset(date: NaiveDate) -> OffsetDateTime {
     Date::parse(&fmt, &TIME_FORMAT)
         .expect("Failed to parse date")
         .midnight()
-        // TODO: make this configurable
         .assume_offset(UtcOffset::from_hms(2, 0, 0).expect("Failed to create offset"))
 }
 
