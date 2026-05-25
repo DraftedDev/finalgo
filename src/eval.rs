@@ -43,6 +43,7 @@ impl Evaluator {
         );
 
         let len = target.opens.len();
+        assert!(len >= 5, "Target must contain at least 5 candles");
 
         let open = target.opens[0];
         let close = target.closes[len - 1];
@@ -52,7 +53,6 @@ impl Evaluator {
             .iter()
             .copied()
             .fold(f64::NEG_INFINITY, f64::max);
-
         let low = target.lows.iter().copied().fold(f64::INFINITY, f64::min);
 
         let raw_return = if open.abs() > 1e-12 {
@@ -61,21 +61,37 @@ impl Evaluator {
             0.0
         };
 
-        let direction = (raw_return * 12.0).tanh().clamp(-1.0, 1.0);
+        let direction = (raw_return * 10.0).tanh().clamp(-1.0, 1.0);
 
-        let strength = (raw_return.abs() * 12.0).tanh().clamp(0.0, 1.0);
+        let strength = (raw_return.abs() * 10.0).tanh().clamp(0.0, 1.0);
 
         let range = (high - low).max(0.0);
+
         let normalized_range = if open.abs() > 1e-12 {
             range / open
         } else {
             0.0
         };
 
-        let volatility = ((normalized_range - 0.02) * 40.0).tanh().clamp(-1.0, 1.0);
+        let volatility = ((normalized_range - 0.03) * 30.0).tanh().clamp(-1.0, 1.0);
 
-        let body = (close - open).abs();
-        let body_ratio = if range > 1e-12 { body / range } else { 0.0 };
+        let body_sum: f64 = target
+            .opens
+            .iter()
+            .zip(target.closes.iter())
+            .map(|(o, c)| (c - o).abs())
+            .sum();
+
+        let avg_body = body_sum / len as f64;
+
+        let avg_range = range / len as f64;
+
+        let body_ratio = if avg_range > 1e-12 {
+            avg_body / avg_range
+        } else {
+            0.0
+        };
+
         let quality = (body_ratio * 2.0 - 1.0).clamp(-1.0, 1.0);
 
         let signal = direction * strength;
