@@ -13,3 +13,5 @@ trading-calendar = "0.2.3"
 time = "0.3.47"
 indicatif = "0.18.4"
 tracing-indicatif = "0.3.14"
+heed = { version = "0.22.1", default-features = false, features = ["serde", "serde-bincode"] }
+serde = { version = "1.0.228", features = ["derive"] }

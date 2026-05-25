@@ -1,6 +1,7 @@
-use crate::consts::CANDLE_LOOK_BACK;
+use crate::consts::{CANDLE_LOOK_BACK, TARGET_CANDLE_LOOK_BACK};
+use crate::data::{DataKey, StockData};
+use crate::database::Database;
 use crate::eval::{Evaluator, ScoreLoss};
-use crate::interface::StockData;
 use crate::utils::round_to_two_decimals;
 use crate::{interface, utils};
 use clap::Parser;
@@ -17,7 +18,17 @@ pub struct Cli {
 
 impl Cli {
     pub async fn run(&self, args: RunArgs) {
-        let data = StockData::fetch(args.target, CANDLE_LOOK_BACK, args.ticker).await;
+        let database = Database::new();
+
+        let data = StockData::fetch(
+            &database,
+            DataKey {
+                end: args.target,
+                size: CANDLE_LOOK_BACK,
+                ticker: args.ticker,
+            },
+        )
+        .await;
         let mut interface = interface::build(data);
 
         interface.run(true);
@@ -51,20 +62,31 @@ impl Cli {
 
         let fetched = utils::with_progress("Fetching", data.len() as u64, |span| async move {
             let mut set = JoinSet::new();
+            let database = Database::new();
 
             for (t, t_target, ticker) in data {
+                let database = database.clone();
                 let span = span.clone();
                 set.spawn(async move {
                     let data = StockData::fetch(
-                        utils::format_naive_date(t),
-                        CANDLE_LOOK_BACK,
-                        ticker.clone(),
+                        &database,
+                        DataKey {
+                            end: utils::format_naive_date(t),
+                            size: CANDLE_LOOK_BACK,
+                            ticker: ticker.clone(),
+                        },
                     )
                     .await;
 
-                    let target =
-                        StockData::fetch(utils::format_naive_date(t_target), 5, ticker.clone())
-                            .await;
+                    let target = StockData::fetch(
+                        &database,
+                        DataKey {
+                            end: utils::format_naive_date(t_target),
+                            size: TARGET_CANDLE_LOOK_BACK,
+                            ticker: ticker.clone(),
+                        },
+                    )
+                    .await;
 
                     span.pb_inc(1);
 

@@ -1,4 +1,4 @@
-use crate::consts::{FETCH_BUFFER, FETCH_RETRIES, FETCH_TIMEOUT};
+use crate::data::StockData;
 use crate::indicator::Indicator;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::bol_width::BollingerWidth;
@@ -10,11 +10,9 @@ use crate::indicator::roc::RateOfChange;
 use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::stochastic::Stochastic;
 use crate::score::{Score, ScoreResult};
-use crate::utils;
-use crate::utils::{naive_to_offset, round_to_two_decimals};
+use crate::utils::round_to_two_decimals;
 use std::any::TypeId;
 use std::collections::HashMap;
-use yahoo_finance_api::YahooConnectorBuilder;
 
 pub fn build(data: StockData) -> Interface {
     let mut interface = Interface::new(data);
@@ -137,59 +135,5 @@ impl Interface {
         }
 
         score
-    }
-}
-
-pub struct StockData {
-    pub highs: Vec<f64>,
-    pub lows: Vec<f64>,
-    pub opens: Vec<f64>,
-    pub closes: Vec<f64>,
-    pub volumes: Vec<f64>,
-}
-
-impl StockData {
-    pub async fn fetch(end: String, lookback: usize, ticker: String) -> Self {
-        let yahoo = YahooConnectorBuilder::new()
-            .timeout(FETCH_TIMEOUT)
-            .build()
-            .expect("Failed to build yahoo connector");
-
-        let end = utils::parse_naive_date(&end);
-
-        // OVER-FETCH (buffer for missing data)
-        let start = utils::subtract_naive_date(end, lookback + FETCH_BUFFER);
-
-        let start = naive_to_offset(start);
-        let end = naive_to_offset(end);
-
-        let mut response = yahoo.get_quote_history(&ticker, start, end).await;
-        let mut retries = 1;
-
-        while response.is_err() && retries < FETCH_RETRIES {
-            retries += 1;
-            tracing::warn!("Fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
-            response = yahoo.get_quote_history(&ticker, start, end).await;
-        }
-
-        let mut quotes = response
-            .expect("Failed to fetch quotes")
-            .quotes()
-            .expect("Failed to get quotes");
-
-        quotes.sort_by_key(|c| c.timestamp);
-
-        let len = quotes.len();
-        let start_idx = len.saturating_sub(lookback);
-
-        let trimmed = &quotes[start_idx..];
-
-        Self {
-            highs: trimmed.iter().map(|q| q.high).collect(),
-            lows: trimmed.iter().map(|q| q.low).collect(),
-            opens: trimmed.iter().map(|q| q.open).collect(),
-            closes: trimmed.iter().map(|q| q.close).collect(),
-            volumes: trimmed.iter().map(|q| q.volume as f64).collect(),
-        }
     }
 }

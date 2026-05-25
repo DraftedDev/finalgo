@@ -1,4 +1,5 @@
-use crate::interface::{Interface, StockData};
+use crate::data::StockData;
+use crate::interface::Interface;
 use crate::score::{FinalScore, ScoreResult};
 use crate::{interface, utils};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
