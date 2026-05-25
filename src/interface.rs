@@ -1,5 +1,6 @@
 use crate::data::StockData;
 use crate::indicator::Indicator;
+use crate::indicator::adx::AvgDirMovIdx;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::bol_width::BollingerWidth;
 use crate::indicator::donchian::DonchianPosition;
@@ -26,6 +27,7 @@ pub fn build(data: StockData) -> Interface {
     interface.add_indicator(Stochastic::<14, 3>::new());
     interface.add_indicator(DonchianPosition::<20>::new());
     interface.add_indicator(RelativeVolume::<20>::new());
+    interface.add_indicator(AvgDirMovIdx::<14>::new());
 
     interface
 }

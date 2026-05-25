@@ -2,6 +2,7 @@ use crate::interface::Interface;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
+pub mod adx;
 pub mod atr;
 pub mod bol_width;
 pub mod donchian;
