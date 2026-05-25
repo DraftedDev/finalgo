@@ -26,8 +26,8 @@ const STD_MULTI: f64 = 2.0;
 /// BOLL_W_MIN_MAX = rolling min-max normalization
 /// ```
 pub struct BollingerWidth<const PERIOD: usize> {
-    width: Vec<f64>,
-    min_max: Vec<f64>,
+    pub width: Vec<f64>,
+    pub min_max: Vec<f64>,
 }
 
 impl<const PERIOD: usize> BollingerWidth<PERIOD> {
@@ -36,10 +36,6 @@ impl<const PERIOD: usize> BollingerWidth<PERIOD> {
             width: Vec::new(),
             min_max: Vec::new(),
         }
-    }
-
-    pub fn min_max(&self) -> &[f64] {
-        &self.min_max
     }
 }
 
@@ -79,11 +75,11 @@ impl<const PERIOD: usize> Indicator for BollingerWidth<PERIOD> {
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
         let mut out = Vec::new();
 
-        if self.min_max().is_empty() {
+        if self.min_max.is_empty() {
             return out;
         }
 
-        let v = *self.min_max().last().unwrap();
+        let v = *self.min_max.last().unwrap();
 
         if !v.is_finite() {
             return out;

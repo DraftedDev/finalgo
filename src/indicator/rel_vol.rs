@@ -17,9 +17,9 @@ use std::any::Any;
 /// RVOL_z = z_score(RVOL)
 /// ```
 pub struct RelativeVolume<const PERIOD: usize> {
-    vol: Vec<f64>,
-    vol_smoothed: Vec<f64>,
-    vol_z: Vec<f64>,
+    pub vol: Vec<f64>,
+    pub vol_smoothed: Vec<f64>,
+    pub vol_z: Vec<f64>,
 }
 
 impl<const PERIOD: usize> RelativeVolume<PERIOD> {
@@ -29,14 +29,6 @@ impl<const PERIOD: usize> RelativeVolume<PERIOD> {
             vol_smoothed: Vec::new(),
             vol_z: Vec::new(),
         }
-    }
-
-    pub fn vol_smoothed(&self) -> &[f64] {
-        &self.vol_smoothed
-    }
-
-    pub fn vol_z(&self) -> &[f64] {
-        &self.vol_z
     }
 }
 
@@ -92,11 +84,11 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
             values.iter().rev().copied().find(|v| v.is_finite())
         }
 
-        let Some(smoothed) = last_finite(self.vol_smoothed()) else {
+        let Some(smoothed) = last_finite(&self.vol_smoothed) else {
             return Vec::new();
         };
 
-        let Some(z) = last_finite(self.vol_z()) else {
+        let Some(z) = last_finite(&self.vol_z) else {
             return Vec::new();
         };
 

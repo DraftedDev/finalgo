@@ -21,9 +21,9 @@ use std::any::Any;
 /// EMA_SLOPE_t = norm_atr_14(EMA_t - EMA_{t-1})
 /// ```
 pub struct ExpMovAvg<const PERIOD: usize> {
-    ema: Vec<f64>,
-    distance: Vec<f64>,
-    slope: Vec<f64>,
+    pub ema: Vec<f64>,
+    pub distance: Vec<f64>,
+    pub slope: Vec<f64>,
 }
 
 impl<const PERIOD: usize> ExpMovAvg<PERIOD> {
@@ -33,14 +33,6 @@ impl<const PERIOD: usize> ExpMovAvg<PERIOD> {
             distance: Vec::new(),
             slope: Vec::new(),
         }
-    }
-
-    pub fn distance(&self) -> &[f64] {
-        &self.distance
-    }
-
-    pub fn slope(&self) -> &[f64] {
-        &self.slope
     }
 }
 
@@ -75,7 +67,7 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
             prev_ema = ema;
         }
 
-        let atr = int.indicator::<AvgTrueRange<14>>().atr();
+        let atr = &int.indicator::<AvgTrueRange<14>>().atr;
 
         self.distance = norm_atr(&self.distance, atr);
         self.slope = norm_atr(&self.slope, atr);
@@ -88,8 +80,8 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
         let mut out = Vec::new();
 
-        let distance = self.distance().last().copied().unwrap_or(0.0);
-        let slope = self.slope().last().copied().unwrap_or(0.0);
+        let distance = self.distance.last().copied().unwrap_or(0.0);
+        let slope = self.slope.last().copied().unwrap_or(0.0);
 
         if !distance.is_finite() || !slope.is_finite() {
             return out;

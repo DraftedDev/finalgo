@@ -33,14 +33,6 @@ impl<const PERIOD: usize> DonchianPosition<PERIOD> {
             position_z: Vec::new(),
         }
     }
-
-    pub fn position(&self) -> &[f64] {
-        &self.position
-    }
-
-    pub fn position_z(&self) -> &[f64] {
-        &self.position_z
-    }
 }
 
 impl<const PERIOD: usize> Indicator for DonchianPosition<PERIOD> {
@@ -90,8 +82,8 @@ impl<const PERIOD: usize> Indicator for DonchianPosition<PERIOD> {
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
         let mut out = Vec::new();
 
-        let pos = self.position().last().copied().unwrap_or(f64::NAN);
-        let pos_z = self.position_z().last().copied().unwrap_or(f64::NAN);
+        let pos = self.position.last().copied().unwrap_or(f64::NAN);
+        let pos_z = self.position_z.last().copied().unwrap_or(f64::NAN);
 
         if !pos.is_finite() || !pos_z.is_finite() {
             return out;

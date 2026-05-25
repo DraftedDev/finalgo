@@ -16,10 +16,10 @@ use std::any::Any;
 /// ER_accel_t = ER_slope_t - ER_slope_{t-1}
 /// ```
 pub struct EfficiencyRatio<const PERIOD: usize> {
-    er: Vec<f64>,
-    smoothed: Vec<f64>,
-    slope: Vec<f64>,
-    accel: Vec<f64>,
+    pub er: Vec<f64>,
+    pub smoothed: Vec<f64>,
+    pub slope: Vec<f64>,
+    pub accel: Vec<f64>,
 }
 
 impl<const PERIOD: usize> EfficiencyRatio<PERIOD> {
@@ -30,18 +30,6 @@ impl<const PERIOD: usize> EfficiencyRatio<PERIOD> {
             slope: Vec::new(),
             accel: Vec::new(),
         }
-    }
-
-    pub fn smoothed(&self) -> &[f64] {
-        &self.smoothed
-    }
-
-    pub fn slope(&self) -> &[f64] {
-        &self.slope
-    }
-
-    pub fn accel(&self) -> &[f64] {
-        &self.accel
     }
 
     fn latest_finite(values: &[f64]) -> f64 {
@@ -121,9 +109,9 @@ impl<const PERIOD: usize> Indicator for EfficiencyRatio<PERIOD> {
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
         let mut out = Vec::new();
 
-        let smoothed = Self::latest_finite(self.smoothed());
-        let slope = Self::latest_finite(self.slope());
-        let accel = Self::latest_finite(self.accel());
+        let smoothed = Self::latest_finite(&self.smoothed);
+        let slope = Self::latest_finite(&self.slope);
+        let accel = Self::latest_finite(&self.accel);
 
         let quality = Self::signed_from_unit(smoothed);
         out.push((ScoreType::Quality, ScoreRecord::new(quality, 1.0)));

@@ -17,9 +17,9 @@ use std::any::Any;
 /// ROC_Z = z_score(ROC)
 /// ```
 pub struct RateOfChange<const PERIOD: usize> {
-    roc: Vec<f64>,
-    roc_abs: Vec<f64>,
-    roc_z: Vec<f64>,
+    pub roc: Vec<f64>,
+    pub roc_abs: Vec<f64>,
+    pub roc_z: Vec<f64>,
 }
 
 impl<const PERIOD: usize> RateOfChange<PERIOD> {
@@ -29,14 +29,6 @@ impl<const PERIOD: usize> RateOfChange<PERIOD> {
             roc_abs: Vec::new(),
             roc_z: Vec::new(),
         }
-    }
-
-    pub fn roc(&self) -> &[f64] {
-        &self.roc
-    }
-
-    pub fn roc_z(&self) -> &[f64] {
-        &self.roc_z
     }
 }
 
@@ -77,15 +69,15 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
         let mut out = Vec::new();
 
-        if self.roc().is_empty() || self.roc_z().is_empty() {
+        if self.roc.is_empty() || self.roc_z.is_empty() {
             return out;
         }
 
-        let len = self.roc().len();
+        let len = self.roc.len();
 
         for i in 0..len {
-            let roc = self.roc()[i];
-            let roc_z = self.roc_z()[i];
+            let roc = self.roc[i];
+            let roc_z = self.roc_z[i];
 
             if !roc.is_finite() || !roc_z.is_finite() {
                 continue;

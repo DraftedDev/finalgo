@@ -28,14 +28,6 @@ impl<const PERIOD: usize, const SMOOTH: usize> Stochastic<PERIOD, SMOOTH> {
             d: Vec::new(),
         }
     }
-
-    pub fn k(&self) -> &[f64] {
-        &self.k
-    }
-
-    pub fn d(&self) -> &[f64] {
-        &self.d
-    }
 }
 
 impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, SMOOTH> {
@@ -98,14 +90,14 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
         let mut out = Vec::new();
 
-        let len = self.k().len().min(self.d().len());
+        let len = self.k.len().min(self.d.len());
         if len == 0 {
             return out;
         }
 
         for i in 0..len {
-            let k = self.k()[i];
-            let d = self.d()[i];
+            let k = self.k[i];
+            let d = self.d[i];
 
             if !k.is_finite() || !d.is_finite() {
                 continue;

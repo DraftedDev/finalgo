@@ -24,8 +24,8 @@ use std::any::Any;
 /// ATR_Z_t = z_score(ATR_t)
 /// ```
 pub struct AvgTrueRange<const PERIOD: usize> {
-    atr: Vec<f64>,
-    atr_z: Vec<f64>,
+    pub atr: Vec<f64>,
+    pub atr_z: Vec<f64>,
 }
 
 impl<const PERIOD: usize> AvgTrueRange<PERIOD> {
@@ -34,14 +34,6 @@ impl<const PERIOD: usize> AvgTrueRange<PERIOD> {
             atr: Vec::new(),
             atr_z: Vec::new(),
         }
-    }
-
-    pub fn atr(&self) -> &[f64] {
-        &self.atr
-    }
-
-    pub fn atr_z(&self) -> &[f64] {
-        &self.atr_z
     }
 }
 
@@ -91,9 +83,9 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
     }
 
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        let mut out = Vec::with_capacity(self.atr_z().len());
+        let mut out = Vec::with_capacity(self.atr_z.len());
 
-        for &z in self.atr_z() {
+        for &z in &self.atr_z {
             if !z.is_finite() {
                 continue;
             }

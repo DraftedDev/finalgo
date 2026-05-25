@@ -34,14 +34,6 @@ impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
             rsi_slope: Vec::new(),
         }
     }
-
-    pub fn rsi(&self) -> &[f64] {
-        &self.rsi
-    }
-
-    pub fn rsi_slope(&self) -> &[f64] {
-        &self.rsi_slope
-    }
 }
 
 impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
@@ -122,7 +114,7 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
     }
 
     fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        let len = self.rsi().len();
+        let len = self.rsi.len();
 
         if len == 0 {
             return vec![];
@@ -131,8 +123,8 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         let mut out = Vec::with_capacity(len);
 
         for i in 0..len {
-            let rsi = self.rsi()[i];
-            let slope = self.rsi_slope()[i];
+            let rsi = self.rsi[i];
+            let slope = self.rsi_slope[i];
 
             if !rsi.is_finite() {
                 continue;
