@@ -149,7 +149,7 @@ pub struct StockData {
 }
 
 impl StockData {
-    pub async fn fetch_range(end: String, lookback: usize, ticker: String) -> Self {
+    pub async fn fetch(end: String, lookback: usize, ticker: String) -> Self {
         let yahoo = YahooConnectorBuilder::new()
             .timeout(FETCH_TIMEOUT)
             .build()
@@ -166,7 +166,7 @@ impl StockData {
         let mut response = yahoo.get_quote_history(&ticker, start, end).await;
         let mut retries = 1;
 
-        while response.is_err() && retries <= FETCH_RETRIES {
+        while response.is_err() && retries < FETCH_RETRIES {
             retries += 1;
             tracing::warn!("Fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
             response = yahoo.get_quote_history(&ticker, start, end).await;

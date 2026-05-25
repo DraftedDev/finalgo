@@ -17,7 +17,7 @@ pub struct Cli {
 
 impl Cli {
     pub async fn run(&self, args: RunArgs) {
-        let data = StockData::fetch_range(args.target, CANDLE_LOOK_BACK, args.ticker).await;
+        let data = StockData::fetch(args.target, CANDLE_LOOK_BACK, args.ticker).await;
         let mut interface = interface::build(data);
 
         interface.run(true);
@@ -55,19 +55,16 @@ impl Cli {
             for (t, t_target, ticker) in data {
                 let span = span.clone();
                 set.spawn(async move {
-                    let data = StockData::fetch_range(
+                    let data = StockData::fetch(
                         utils::format_naive_date(t),
                         CANDLE_LOOK_BACK,
                         ticker.clone(),
                     )
                     .await;
 
-                    let target = StockData::fetch_range(
-                        utils::format_naive_date(t_target),
-                        5,
-                        ticker.clone(),
-                    )
-                    .await;
+                    let target =
+                        StockData::fetch(utils::format_naive_date(t_target), 5, ticker.clone())
+                            .await;
 
                     span.pb_inc(1);
 
@@ -88,7 +85,7 @@ impl Cli {
         let losses = eval.eval().await;
         let aggregate = ScoreLoss::aggregate(&losses);
 
-        tracing::info!("[#############################################]");
+        tracing::info!("[########################################]");
 
         tracing::info!(
             "DIRECTION  || {}",
@@ -111,7 +108,7 @@ impl Cli {
 
         tracing::info!("TOTAL      || {}", round_to_two_decimals(aggregate.total()),);
 
-        tracing::info!("[#############################################]");
+        tracing::info!("[########################################]");
     }
 }
 
