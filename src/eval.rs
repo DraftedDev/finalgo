@@ -1,6 +1,7 @@
-use crate::interface;
 use crate::interface::{Interface, StockData};
 use crate::score::{FinalScore, ScoreResult};
+use crate::{interface, utils};
+use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Evaluates prediction quality against future realized candles.
 ///
@@ -23,17 +24,21 @@ impl Evaluator {
         self.data.push((interface::build(predict), target));
     }
 
-    pub fn eval(&mut self) -> Vec<ScoreLoss> {
-        let mut losses = Vec::with_capacity(self.data.len());
+    pub async fn eval(&mut self) -> Vec<ScoreLoss> {
+        utils::with_progress("Evaluating", self.data.len() as u64, |span| async move {
+            let mut losses = Vec::with_capacity(self.data.len());
 
-        for (int, target_data) in &mut self.data {
-            let predict = int.run();
-            let target = Self::build_target_result(target_data);
+            for (int, target_data) in &mut self.data {
+                let predict = int.run(false);
+                let target = Self::build_target_result(target_data);
+                span.pb_inc(1);
 
-            losses.push(ScoreLoss::new(predict, target));
-        }
+                losses.push(ScoreLoss::new(predict, target));
+            }
 
-        losses
+            losses
+        })
+        .await
     }
 
     fn build_target_result(target: &StockData) -> ScoreResult {

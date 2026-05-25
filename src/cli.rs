@@ -5,6 +5,7 @@ use crate::utils::round_to_two_decimals;
 use crate::{interface, utils};
 use clap::Parser;
 use tokio::task::JoinSet;
+use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Command-line-interface to the finalgo algorithm.
 #[derive(Clone, Debug, Parser)]
@@ -19,7 +20,7 @@ impl Cli {
         let data = StockData::fetch_range(args.target, CANDLE_LOOK_BACK, args.ticker).await;
         let mut interface = interface::build(data);
 
-        interface.run();
+        interface.run(true);
     }
 
     pub async fn eval(&self, args: EvalArgs) {
@@ -37,53 +38,54 @@ impl Cli {
 
         let mut data = Vec::with_capacity(args.samples);
 
-        for i in 1..=args.samples {
+        for _ in 1..=args.samples {
             let target_end = utils::add_naive_date(t, 4);
 
             for ticker in &args.tickers {
-                data.push((i, t, target_end, ticker.clone()));
+                data.push((t, target_end, ticker.clone()));
             }
 
             // move forward by one trading day
             t = utils::add_naive_date(t, 1);
         }
 
-        let mut fetched = JoinSet::from_iter(data.into_iter().map(
-            |(i, t, target_end, ticker)| async move {
-                let data = StockData::fetch_range(
-                    utils::format_naive_date(t),
-                    CANDLE_LOOK_BACK,
-                    ticker.clone(),
-                )
-                .await;
+        let fetched = utils::with_progress("Fetching", data.len() as u64, |span| async move {
+            let mut set = JoinSet::new();
 
-                let target =
-                    StockData::fetch_range(utils::format_naive_date(target_end), 5, ticker.clone())
-                        .await;
+            for (t, t_target, ticker) in data {
+                let span = span.clone();
+                set.spawn(async move {
+                    let data = StockData::fetch_range(
+                        utils::format_naive_date(t),
+                        CANDLE_LOOK_BACK,
+                        ticker.clone(),
+                    )
+                    .await;
 
-                tracing::info!("Fetched sample {i}!");
+                    let target = StockData::fetch_range(
+                        utils::format_naive_date(t_target),
+                        5,
+                        ticker.clone(),
+                    )
+                    .await;
 
-                (data, target)
-            },
-        ));
+                    span.pb_inc(1);
 
-        loop {
-            if fetched.is_empty() {
-                break;
+                    (data, target)
+                });
             }
 
-            let (predict, target) = fetched
-                .join_next()
-                .await
-                .expect("Failed to join task")
-                .expect("Failed to fetch data");
+            set.join_all().await
+        })
+        .await;
 
+        for (predict, target) in fetched {
             eval.add(predict, target);
         }
 
         tracing::info!("Evaluating...");
 
-        let losses = eval.eval();
+        let losses = eval.eval().await;
         let aggregate = ScoreLoss::aggregate(&losses);
 
         tracing::info!("[#############################################]");

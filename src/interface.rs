@@ -1,4 +1,4 @@
-use crate::consts::FETCH_BUFFER;
+use crate::consts::{FETCH_BUFFER, FETCH_RETRIES, FETCH_TIMEOUT};
 use crate::indicator::Indicator;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::bol_width::BollingerWidth;
@@ -14,7 +14,6 @@ use crate::utils;
 use crate::utils::{naive_to_offset, round_to_two_decimals};
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::time::Duration;
 use yahoo_finance_api::YahooConnectorBuilder;
 
 pub fn build(data: StockData) -> Interface {
@@ -79,13 +78,17 @@ impl Interface {
         self.indicators.insert(id, Box::new(indicator));
     }
 
-    pub fn run(&mut self) -> ScoreResult {
-        tracing::info!("Building {} indicators...", self.indicators.len());
+    pub fn run(&mut self, traces: bool) -> ScoreResult {
+        if traces {
+            tracing::info!("Building {} indicators...", self.indicators.len());
+        }
 
         for id in &self.run_order {
             let mut indicator = self.indicators.remove(id).unwrap();
 
-            tracing::info!("Computing indicator '{}'...", indicator.name());
+            if traces {
+                tracing::info!("Computing indicator '{}'...", indicator.name());
+            }
             indicator.compute(self);
 
             for (ty, score) in indicator.score() {
@@ -95,40 +98,43 @@ impl Interface {
             self.indicators.insert(*id, indicator);
         }
 
-        tracing::info!("[#############################################]");
         let score = self.score.compute();
 
-        tracing::info!(
-            "DIRECTION   || {:+} ({})",
-            round_to_two_decimals(score.direction),
-            score.direction_label
-        );
+        if traces {
+            tracing::info!("[#############################################]");
 
-        tracing::info!(
-            "QUALITY     || {:+} ({})",
-            round_to_two_decimals(score.quality),
-            score.quality_label
-        );
+            tracing::info!(
+                "DIRECTION   || {:+} ({})",
+                round_to_two_decimals(score.direction),
+                score.direction_label
+            );
 
-        tracing::info!(
-            "STRENGTH    || {:+} ({})",
-            round_to_two_decimals(score.strength),
-            score.strength_label
-        );
+            tracing::info!(
+                "QUALITY     || {:+} ({})",
+                round_to_two_decimals(score.quality),
+                score.quality_label
+            );
 
-        tracing::info!(
-            "VOLATILITY  || {:+} ({})",
-            round_to_two_decimals(score.volatility),
-            score.volatility_label
-        );
+            tracing::info!(
+                "STRENGTH    || {:+} ({})",
+                round_to_two_decimals(score.strength),
+                score.strength_label
+            );
 
-        tracing::info!(
-            "FINAL SCORE || {:+} ({})",
-            round_to_two_decimals(score.signal),
-            score.final_score
-        );
+            tracing::info!(
+                "VOLATILITY  || {:+} ({})",
+                round_to_two_decimals(score.volatility),
+                score.volatility_label
+            );
 
-        tracing::info!("[#############################################]");
+            tracing::info!(
+                "FINAL SCORE || {:+} ({})",
+                round_to_two_decimals(score.signal),
+                score.final_score
+            );
+
+            tracing::info!("[#############################################]");
+        }
 
         score
     }
@@ -145,7 +151,7 @@ pub struct StockData {
 impl StockData {
     pub async fn fetch_range(end: String, lookback: usize, ticker: String) -> Self {
         let yahoo = YahooConnectorBuilder::new()
-            .timeout(Duration::from_secs(5))
+            .timeout(FETCH_TIMEOUT)
             .build()
             .expect("Failed to build yahoo connector");
 
@@ -157,20 +163,26 @@ impl StockData {
         let start = naive_to_offset(start);
         let end = naive_to_offset(end);
 
-        let mut response = yahoo
-            .get_quote_history(&ticker, start, end)
-            .await
-            .expect("Failed to request quotes")
+        let mut response = yahoo.get_quote_history(&ticker, start, end).await;
+        let mut retries = 1;
+
+        while response.is_err() && retries <= FETCH_RETRIES {
+            retries += 1;
+            tracing::warn!("Fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
+            response = yahoo.get_quote_history(&ticker, start, end).await;
+        }
+
+        let mut quotes = response
+            .expect("Failed to fetch quotes")
             .quotes()
             .expect("Failed to get quotes");
 
-        response.sort_by_key(|c| c.timestamp);
+        quotes.sort_by_key(|c| c.timestamp);
 
-        // STEP 3: trim to last `lookback`
-        let len = response.len();
+        let len = quotes.len();
         let start_idx = len.saturating_sub(lookback);
 
-        let trimmed = &response[start_idx..];
+        let trimmed = &quotes[start_idx..];
 
         Self {
             highs: trimmed.iter().map(|q| q.high).collect(),

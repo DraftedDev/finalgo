@@ -1,7 +1,9 @@
+use indicatif::ProgressStyle;
 use std::sync::LazyLock;
 use time::format_description::BorrowedFormatItem;
 use time::macros::format_description;
 use time::{Date, UtcOffset};
+use tracing_indicatif::span_ext::IndicatifSpanExt;
 use trading_calendar::{Market, NaiveDate, TradingCalendar};
 use yahoo_finance_api::time::OffsetDateTime;
 
@@ -60,4 +62,34 @@ pub fn assert_range(value: f64, min: f64, max: f64, label: &str) {
         value >= min && value <= max,
         "{label} value {value} out of bounds [{min}, {max}]"
     );
+}
+
+pub async fn with_progress<Fut: Future<Output = R>, R>(
+    msg: &str,
+    len: u64,
+    f: impl FnOnce(tracing::Span) -> Fut,
+) -> R {
+    let span = tracing::span!(tracing::Level::INFO, "progress");
+    span.pb_set_message(msg);
+    span.pb_set_length(len);
+
+    let template = if len == 0 {
+        "  [{spinner:.green}] {msg} │ {elapsed:<4}"
+    } else {
+        "  [{spinner:.green}] {msg} {wide_bar:.green/red} {pos}/{len} ({percent}%) │ {elapsed:<4}"
+    };
+
+    span.pb_set_style(
+        &ProgressStyle::with_template(template)
+            .unwrap()
+            .progress_chars("━━━"),
+    );
+
+    let span2 = span.clone();
+    let enter = span2.enter();
+    let result = f(span).await;
+
+    drop(enter);
+
+    result
 }
