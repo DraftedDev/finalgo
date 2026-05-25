@@ -92,7 +92,7 @@ impl Cli {
             round_to_two_decimals(aggregate.direction),
         );
 
-        tracing::info!("QUALITY    || {}", round_to_two_decimals(aggregate.quality),);
+        tracing::info!("QUALITY    || {}", round_to_two_decimals(aggregate.quality));
 
         tracing::info!(
             "STRENGTH   || {}",
@@ -104,9 +104,9 @@ impl Cli {
             round_to_two_decimals(aggregate.volatility),
         );
 
-        tracing::info!("FINAL      || {}", round_to_two_decimals(aggregate.signal),);
+        tracing::info!("FINAL      || {}", round_to_two_decimals(aggregate.signal));
 
-        tracing::info!("TOTAL      || {}", round_to_two_decimals(aggregate.total()),);
+        tracing::info!("TOTAL      || {}", round_to_two_decimals(aggregate.total()));
 
         tracing::info!("[####################]");
     }
