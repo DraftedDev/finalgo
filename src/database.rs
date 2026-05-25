@@ -11,6 +11,12 @@ pub struct Database {
 
 impl Database {
     pub fn new() -> Self {
+        let path = "./database.lmdb";
+
+        if !std::fs::exists(path).expect("Failed to check database environment existence") {
+            std::fs::create_dir_all(path).expect("Failed to create database environment");
+        }
+
         let env = unsafe {
             EnvOpenOptions::new()
                 .read_txn_without_tls()
@@ -18,7 +24,7 @@ impl Database {
                 .max_dbs(1)
                 .max_readers(16)
                 .flags(EnvFlags::empty())
-                .open("database.lmdb")
+                .open(path)
         }
         .expect("Failed to open database environment");
 

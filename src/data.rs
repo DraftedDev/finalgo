@@ -1,4 +1,4 @@
-use crate::consts::{FETCH_BUFFER, FETCH_RETRIES, FETCH_TIMEOUT};
+use crate::consts::{FETCH_RETRIES, FETCH_TIMEOUT};
 use crate::database::Database;
 use crate::utils;
 use crate::utils::naive_to_offset;
@@ -33,9 +33,7 @@ impl StockData {
 
         let end = utils::parse_naive_date(&key.end);
 
-        // OVER-FETCH (buffer for missing data)
-        // TODO: test without fetch buffer
-        let start = utils::subtract_naive_date(end, key.size + FETCH_BUFFER);
+        let start = utils::subtract_naive_date(end, key.size);
 
         let start = naive_to_offset(start);
         let end = naive_to_offset(end);
@@ -44,29 +42,22 @@ impl StockData {
         let mut retries = 1;
 
         while response.is_err() && retries < FETCH_RETRIES {
-            retries += 1;
             tracing::warn!("Fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
             response = yahoo.get_quote_history(&key.ticker, start, end).await;
+            retries += 1;
         }
 
-        let mut quotes = response
+        let quotes = response
             .expect("Failed to fetch quotes")
             .quotes()
             .expect("Failed to get quotes");
 
-        quotes.sort_by_key(|c| c.timestamp);
-
-        let len = quotes.len();
-        let start_idx = len.saturating_sub(key.size);
-
-        let trimmed = &quotes[start_idx..];
-
         Self {
-            highs: trimmed.iter().map(|q| q.high).collect(),
-            lows: trimmed.iter().map(|q| q.low).collect(),
-            opens: trimmed.iter().map(|q| q.open).collect(),
-            closes: trimmed.iter().map(|q| q.close).collect(),
-            volumes: trimmed.iter().map(|q| q.volume as f64).collect(),
+            highs: quotes.iter().map(|q| q.high).collect(),
+            lows: quotes.iter().map(|q| q.low).collect(),
+            opens: quotes.iter().map(|q| q.open).collect(),
+            closes: quotes.iter().map(|q| q.close).collect(),
+            volumes: quotes.iter().map(|q| q.volume as f64).collect(),
         }
     }
 }
