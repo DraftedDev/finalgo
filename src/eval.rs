@@ -43,7 +43,12 @@ impl Evaluator {
         );
 
         let len = target.opens.len();
-        assert!(len >= 5, "Target must contain at least 5 candles");
+
+        if len == 0 {
+            panic!("Empty target dataset");
+        } else if len < 5 {
+            tracing::warn!("Only using {len}/5 candles for target score generation!");
+        }
 
         let open = target.opens[0];
         let close = target.closes[len - 1];
@@ -62,11 +67,9 @@ impl Evaluator {
         };
 
         let direction = (raw_return * 10.0).tanh().clamp(-1.0, 1.0);
-
         let strength = (raw_return.abs() * 10.0).tanh().clamp(0.0, 1.0);
 
         let range = (high - low).max(0.0);
-
         let normalized_range = if open.abs() > 1e-12 {
             range / open
         } else {
@@ -75,16 +78,25 @@ impl Evaluator {
 
         let volatility = ((normalized_range - 0.03) * 30.0).tanh().clamp(-1.0, 1.0);
 
-        let body_sum: f64 = target
-            .opens
-            .iter()
-            .zip(target.closes.iter())
-            .map(|(o, c)| (c - o).abs())
-            .sum();
+        let mut body_sum = 0.0;
+        let mut valid = 0usize;
 
-        let avg_body = body_sum / len as f64;
+        for i in 0..len {
+            let o = target.opens[i];
+            let c = target.closes[i];
 
-        let avg_range = range / len as f64;
+            if o.is_finite() && c.is_finite() {
+                body_sum += (c - o).abs();
+                valid += 1;
+            }
+        }
+
+        let avg_body = if valid > 0 {
+            body_sum / valid as f64
+        } else {
+            0.0
+        };
+        let avg_range = if len > 0 { range / len as f64 } else { 1e-12 };
 
         let body_ratio = if avg_range > 1e-12 {
             avg_body / avg_range

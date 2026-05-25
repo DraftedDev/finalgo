@@ -4,6 +4,7 @@ use crate::interface::StockData;
 use crate::utils::round_to_two_decimals;
 use crate::{interface, utils};
 use clap::Parser;
+use tokio::task::JoinSet;
 
 /// Command-line-interface to the finalgo algorithm.
 #[derive(Clone, Debug, Parser)]
@@ -26,7 +27,7 @@ impl Cli {
 
         let end = utils::parse_naive_date(&args.end);
 
-        let mut t = utils::subtract_naive_date(end, (args.samples as i64 + 1) as usize);
+        let mut t = utils::subtract_naive_date(end, (args.samples as i64 + 5) as usize);
 
         tracing::info!(
             "Collecting {} samples of {} tickers each...",
@@ -34,11 +35,21 @@ impl Cli {
             args.tickers.len()
         );
 
-        for _ in 0..args.samples {
-            let next_t = utils::add_naive_date(t, 1);
+        let mut data = Vec::with_capacity(args.samples);
+
+        for i in 1..=args.samples {
+            let target_end = utils::add_naive_date(t, 4);
 
             for ticker in &args.tickers {
-                // Prediction window: [t - LOOKBACK, t]
+                data.push((i, t, target_end, ticker.clone()));
+            }
+
+            // move forward by one trading day
+            t = utils::add_naive_date(t, 1);
+        }
+
+        let mut fetched = JoinSet::from_iter(data.into_iter().map(
+            |(i, t, target_end, ticker)| async move {
                 let data = StockData::fetch_range(
                     utils::format_naive_date(t),
                     CANDLE_LOOK_BACK,
@@ -46,14 +57,28 @@ impl Cli {
                 )
                 .await;
 
-                // Target: EXACT next candle ONLY
                 let target =
-                    StockData::fetch_single(utils::format_naive_date(next_t), ticker.clone()).await;
+                    StockData::fetch_range(utils::format_naive_date(target_end), 5, ticker.clone())
+                        .await;
 
-                eval.add(data, target);
+                tracing::info!("Fetched sample {i}!");
+
+                (data, target)
+            },
+        ));
+
+        loop {
+            if fetched.is_empty() {
+                break;
             }
 
-            t = next_t;
+            let (predict, target) = fetched
+                .join_next()
+                .await
+                .expect("Failed to join task")
+                .expect("Failed to fetch data");
+
+            eval.add(predict, target);
         }
 
         tracing::info!("Evaluating...");

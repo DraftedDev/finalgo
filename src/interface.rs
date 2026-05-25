@@ -1,3 +1,4 @@
+use crate::consts::FETCH_BUFFER;
 use crate::indicator::Indicator;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::bol_width::BollingerWidth;
@@ -149,7 +150,9 @@ impl StockData {
             .expect("Failed to build yahoo connector");
 
         let end = utils::parse_naive_date(&end);
-        let start = utils::subtract_naive_date(end, lookback);
+
+        // OVER-FETCH (buffer for missing data)
+        let start = utils::subtract_naive_date(end, lookback + FETCH_BUFFER);
 
         let start = naive_to_offset(start);
         let end = naive_to_offset(end);
@@ -161,30 +164,20 @@ impl StockData {
             .quotes()
             .expect("Failed to get quotes");
 
-        // Ensure deterministic ordering
-        response.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        response.sort_by_key(|c| c.timestamp);
+
+        // STEP 3: trim to last `lookback`
+        let len = response.len();
+        let start_idx = len.saturating_sub(lookback);
+
+        let trimmed = &response[start_idx..];
 
         Self {
-            highs: response.iter().map(|q| q.high).collect(),
-            lows: response.iter().map(|q| q.low).collect(),
-            opens: response.iter().map(|q| q.open).collect(),
-            closes: response.iter().map(|q| q.close).collect(),
-            volumes: response.iter().map(|q| q.volume as f64).collect(),
+            highs: trimmed.iter().map(|q| q.high).collect(),
+            lows: trimmed.iter().map(|q| q.low).collect(),
+            opens: trimmed.iter().map(|q| q.open).collect(),
+            closes: trimmed.iter().map(|q| q.close).collect(),
+            volumes: trimmed.iter().map(|q| q.volume as f64).collect(),
         }
-    }
-
-    pub async fn fetch_single(end: String, ticker: String) -> Self {
-        let mut data = Self::fetch_range(end, 5, ticker).await;
-
-        // Keep ONLY last candle deterministically
-        let idx = data.closes.len().saturating_sub(1);
-
-        data.highs = vec![data.highs[idx]];
-        data.lows = vec![data.lows[idx]];
-        data.opens = vec![data.opens[idx]];
-        data.closes = vec![data.closes[idx]];
-        data.volumes = vec![data.volumes[idx]];
-
-        data
     }
 }
