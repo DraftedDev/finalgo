@@ -85,7 +85,7 @@ impl Cli {
         let losses = eval.eval().await;
         let aggregate = ScoreLoss::aggregate(&losses);
 
-        tracing::info!("[########################################]");
+        tracing::info!("[####################]");
 
         tracing::info!(
             "DIRECTION  || {}",
@@ -108,7 +108,7 @@ impl Cli {
 
         tracing::info!("TOTAL      || {}", round_to_two_decimals(aggregate.total()),);
 
-        tracing::info!("[########################################]");
+        tracing::info!("[####################]");
     }
 }
 
