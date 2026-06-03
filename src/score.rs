@@ -77,8 +77,8 @@ impl Score {
     }
 
     /// Add a score record.
-    pub fn add(&mut self, ty: ScoreType, record: ScoreRecord) {
-        match ty {
+    pub fn add(&mut self, record: ScoreRecord) {
+        match record.ty {
             ScoreType::Direction => {
                 assert_range(record.value, -1.0, 1.0, "direction");
 
@@ -115,40 +115,46 @@ impl Score {
         };
 
         if records.is_empty() {
-            return (0.0, "No data".to_string());
+            let label = match ty {
+                ScoreType::Direction => Self::direction_label(0.0),
+                ScoreType::Quality => Self::quality_label(0.0),
+                ScoreType::Strength => Self::strength_label(0.0),
+                ScoreType::Volatility => Self::volatility_label(0.0),
+            };
+
+            return (0.0, label);
         }
 
         let mut weighted_sum = 0.0;
-        let mut weight_sum = 0.0;
+        let mut total_weight = 0.0;
 
-        for r in records {
-            weighted_sum += r.value * r.weight;
-            weight_sum += r.weight;
+        for record in records {
+            // Confidence scales effective weight
+            let effective_weight = record.weight * record.confidence;
+
+            weighted_sum += record.value * effective_weight;
+            total_weight += effective_weight;
         }
 
-        if weight_sum <= f64::EPSILON {
-            return (0.0, "No data".to_string());
-        }
+        let score = if total_weight > 0.0 {
+            weighted_sum / total_weight
+        } else {
+            0.0
+        };
 
-        let value = weighted_sum / weight_sum;
-
-        let value = match ty {
-            ScoreType::Strength => value.clamp(0.0, 1.0),
-
-            _ => value.clamp(-1.0, 1.0),
+        let score = match ty {
+            ScoreType::Strength => score.clamp(0.0, 1.0),
+            _ => score.clamp(-1.0, 1.0),
         };
 
         let label = match ty {
-            ScoreType::Direction => Self::direction_label(value),
-
-            ScoreType::Quality => Self::quality_label(value),
-
-            ScoreType::Strength => Self::strength_label(value),
-
-            ScoreType::Volatility => Self::volatility_label(value),
+            ScoreType::Direction => Self::direction_label(score),
+            ScoreType::Quality => Self::quality_label(score),
+            ScoreType::Strength => Self::strength_label(score),
+            ScoreType::Volatility => Self::volatility_label(score),
         };
 
-        (value, label)
+        (score, label)
     }
 
     /// Final combined trading signal.
@@ -163,28 +169,15 @@ impl Score {
     /// - Quality validates signal reliability.
     /// - Volatility dampens unstable regimes.
     fn final_signal(direction: f64, strength: f64, quality: f64, volatility: f64) -> f64 {
-        let mut weighted_sum = 0.0;
-        let mut weight_sum = 0.0;
+        let volatility_penalty = 1.0 - ((volatility + 1.0) / 2.0);
 
-        // Directional core
-        for (value, weight) in [
-            (direction, 0.50),
-            (quality, 0.30),
-            (strength * direction.signum(), 0.20),
-        ] {
-            weighted_sum += value * weight;
-            weight_sum += weight;
-        }
+        let quality_factor = ((quality + 1.0) / 2.0).clamp(0.0, 1.0);
 
-        if weight_sum <= f64::EPSILON {
-            return 0.0;
-        }
+        let conviction = strength * 0.45 + quality_factor * 0.35 + volatility_penalty * 0.20;
 
-        let base_signal = (weighted_sum / weight_sum).clamp(-1.0, 1.0);
+        let signal = direction * conviction;
 
-        let volatility_factor = 1.0 - 0.35 * volatility.abs().clamp(0.0, 1.0);
-
-        (base_signal * volatility_factor).clamp(-1.0, 1.0)
+        signal.clamp(-1.0, 1.0)
     }
 
     fn direction_label(v: f64) -> String {
@@ -233,30 +226,53 @@ impl Score {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScoreType {
+    /// -1..1
     Direction,
+    /// -1..1
     Quality,
+    /// 0..1
     Strength,
+    /// -1..1
     Volatility,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct ScoreRecord {
+    ty: ScoreType,
     value: f64,
     weight: f64,
+    confidence: f64,
 }
 
 impl ScoreRecord {
-    pub fn new(value: f64, weight: f64) -> Self {
+    pub fn new(ty: ScoreType, value: f64, weight: f64, confidence: f64) -> Self {
         assert!(value.is_finite(), "score value must be finite");
-
         assert!(weight.is_finite(), "score weight must be finite");
+        assert!(confidence.is_finite(), "score confidence must be finite");
+
+        match ty {
+            ScoreType::Direction => {}
+            ScoreType::Quality => {}
+            ScoreType::Strength => {}
+            ScoreType::Volatility => {}
+        }
 
         assert!(
             (0.0..=1.0).contains(&weight),
             "weight must be within [0.0, 1.0]"
         );
 
-        Self { value, weight }
+        assert!(
+            (0.0..=1.0).contains(&confidence),
+            "confidence must be within [0.0, 1.0]"
+        );
+
+        Self {
+            ty,
+            value,
+            weight,
+            confidence,
+        }
     }
 }
 

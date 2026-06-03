@@ -87,13 +87,10 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
         !self.k.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
+    fn score(&self) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
         let len = self.k.len().min(self.d.len());
-        if len == 0 {
-            return out;
-        }
 
         for i in 0..len {
             let k = self.k[i];
@@ -103,24 +100,45 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
                 continue;
             }
 
-            let direction = (0.5 - k) * 2.0; // maps [0,1] -> [1,-1]
+            let direction = if k > 0.8 {
+                -(k - 0.8) / 0.2
+            } else if k < 0.2 {
+                (0.2 - k) / 0.2
+            } else {
+                0.0
+            }
+            .clamp(-1.0, 1.0);
 
-            let strength = (k - 0.5).abs() * 2.0;
+            let distance_from_mid = (k - 0.5).abs() * 2.0;
+            let strength = distance_from_mid.clamp(0.0, 1.0);
 
-            let quality = 1.0 - (k - d).abs() * 2.0;
-            let quality = quality.clamp(-1.0, 1.0);
+            let divergence = (k - d).abs();
+            let quality = (1.0 - divergence).clamp(-1.0, 1.0);
 
-            out.push((
+            let confidence = strength;
+
+            let weight = 0.6; // stochastic is medium importance
+
+            out.push(ScoreRecord::new(
                 ScoreType::Direction,
-                ScoreRecord::new(direction.clamp(-1.0, 1.0), 1.0),
+                direction,
+                weight,
+                confidence,
             ));
 
-            out.push((
+            out.push(ScoreRecord::new(
                 ScoreType::Strength,
-                ScoreRecord::new(strength.clamp(0.0, 1.0), 1.0),
+                strength,
+                weight,
+                confidence,
             ));
 
-            out.push((ScoreType::Quality, ScoreRecord::new(quality, 1.0)));
+            out.push(ScoreRecord::new(
+                ScoreType::Quality,
+                quality,
+                weight,
+                confidence,
+            ));
         }
 
         out

@@ -82,20 +82,26 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
         !self.atr.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        let mut out = Vec::with_capacity(self.atr_z.len());
+    fn score(&self) -> Vec<ScoreRecord> {
+        let mut out = Vec::new();
 
-        for &z in &self.atr_z {
-            if !z.is_finite() {
-                continue;
-            }
+        let atr_z = match self.atr_z.last() {
+            Some(v) if v.is_finite() => *v,
+            _ => return out,
+        };
 
-            let volatility = (z * 0.8).tanh();
+        let normalized_vol = (atr_z / 2.0).clamp(-1.0, 1.0);
 
-            let weight = (z.abs() / 2.5).clamp(0.15, 1.0);
+        out.push(ScoreRecord::new(
+            ScoreType::Volatility,
+            normalized_vol,
+            0.85,
+            0.90,
+        ));
 
-            out.push((ScoreType::Volatility, ScoreRecord::new(volatility, weight)));
-        }
+        let quality = (-normalized_vol * 0.5).clamp(-1.0, 1.0);
+
+        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.25, 0.70));
 
         out
     }

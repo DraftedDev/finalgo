@@ -1,5 +1,5 @@
 use crate::interface::Interface;
-use crate::score::{ScoreRecord, ScoreType};
+use crate::score::ScoreRecord;
 use std::any::Any;
 
 pub mod adx;
@@ -19,7 +19,7 @@ pub trait Indicator: 'static {
     fn compute(&mut self, int: &Interface);
     fn is_computed(&self) -> bool;
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)>;
+    fn score(&self) -> Vec<ScoreRecord>;
 
     fn as_any(&self) -> &dyn Any;
 }

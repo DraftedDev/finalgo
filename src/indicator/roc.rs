@@ -66,38 +66,44 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
         !self.roc.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
+    fn score(&self) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
-        if self.roc.is_empty() || self.roc_z.is_empty() {
+        let len = self.roc.len();
+        if len == 0 {
             return out;
         }
 
-        let len = self.roc.len();
+        let i = len - 1;
 
-        for i in 0..len {
-            let roc = self.roc[i];
-            let roc_z = self.roc_z[i];
+        let roc = self.roc[i];
+        let roc_abs = self.roc_abs[i];
+        let roc_z = self.roc_z[i];
 
-            if !roc.is_finite() || !roc_z.is_finite() {
-                continue;
-            }
-
-            let direction = roc.tanh();
-
-            let strength = (roc_z.abs() / 3.0).tanh();
-            let weight = roc_z.abs().tanh().clamp(0.05, 1.0);
-
-            out.push((
-                ScoreType::Direction,
-                ScoreRecord::new(direction.clamp(-1.0, 1.0), weight),
-            ));
-
-            out.push((
-                ScoreType::Strength,
-                ScoreRecord::new(strength.clamp(0.0, 1.0), weight),
-            ));
+        // Skip invalid values
+        if !roc.is_finite() || !roc_abs.is_finite() || !roc_z.is_finite() {
+            return out;
         }
+
+        out.push(ScoreRecord::new(
+            ScoreType::Direction,
+            roc.clamp(-1.0, 1.0),
+            0.9, // high importance for momentum direction
+            1.0, // ROC is deterministic from price
+        ));
+
+        let strength = (roc_abs * 10.0).tanh(); // smooth saturation
+
+        out.push(ScoreRecord::new(
+            ScoreType::Strength,
+            strength.clamp(0.0, 1.0),
+            0.8,
+            1.0,
+        ));
+
+        let quality = (1.0 - roc_z.abs().tanh()).clamp(-1.0, 1.0);
+
+        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.6, 1.0));
 
         out
     }

@@ -74,6 +74,10 @@ impl Interface {
     pub fn add_indicator<I: Indicator>(&mut self, indicator: I) {
         let id = TypeId::of::<I>();
 
+        if self.indicators.contains_key(&id) {
+            panic!("Indicator already registered");
+        }
+
         self.run_order.push(id);
         self.indicators.insert(id, Box::new(indicator));
     }
@@ -91,8 +95,8 @@ impl Interface {
             }
             indicator.compute(self);
 
-            for (ty, score) in indicator.score() {
-                self.score.add(ty, score);
+            for score in indicator.score() {
+                self.score.add(score);
             }
 
             self.indicators.insert(*id, indicator);

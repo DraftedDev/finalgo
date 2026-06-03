@@ -77,35 +77,38 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
         !self.ema.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        let mut out = Vec::new();
+    fn score(&self) -> Vec<ScoreRecord> {
+        let mut out = Vec::with_capacity(self.ema.len());
 
-        let distance = self.distance.last().copied().unwrap_or(0.0);
-        let slope = self.slope.last().copied().unwrap_or(0.0);
+        for i in 1..self.ema.len() {
+            let distance = self.distance[i];
+            let slope = self.slope[i];
 
-        if !distance.is_finite() || !slope.is_finite() {
-            return out;
+            let direction = distance * 0.7 + slope * 0.3;
+            let quality = -slope.abs();
+            let strength = distance.abs().clamp(0.0, 1.0);
+
+            out.push(ScoreRecord::new(
+                ScoreType::Direction,
+                direction.clamp(-1.0, 1.0),
+                0.6,
+                1.0,
+            ));
+
+            out.push(ScoreRecord::new(
+                ScoreType::Quality,
+                quality.clamp(-1.0, 1.0),
+                0.4,
+                1.0,
+            ));
+
+            out.push(ScoreRecord::new(
+                ScoreType::Strength,
+                strength.clamp(0.0, 1.0),
+                0.7,
+                1.0,
+            ));
         }
-
-        let direction = (distance * 0.65 + slope * 0.35).tanh().clamp(-1.0, 1.0);
-        out.push((ScoreType::Direction, ScoreRecord::new(direction, 0.90)));
-
-        let strength_raw = distance.abs() * 0.55 + slope.abs() * 0.45;
-        let strength = strength_raw.tanh().clamp(0.0, 1.0);
-        out.push((ScoreType::Strength, ScoreRecord::new(strength, 0.75)));
-
-        let aligned = distance.signum() == slope.signum();
-
-        let quality = if aligned {
-            (distance.abs().min(1.0) + slope.abs().min(1.0)) * 0.5
-        } else {
-            -((distance.abs().min(1.0) + slope.abs().min(1.0)) * 0.5)
-        };
-
-        out.push((
-            ScoreType::Quality,
-            ScoreRecord::new(quality.clamp(-1.0, 1.0), 0.60),
-        ));
 
         out
     }

@@ -79,27 +79,41 @@ impl<const PERIOD: usize> Indicator for DonchianPosition<PERIOD> {
         !self.position.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
+    fn score(&self) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
-        let pos = self.position.last().copied().unwrap_or(f64::NAN);
-        let pos_z = self.position_z.last().copied().unwrap_or(f64::NAN);
+        let len = self.position.len();
 
-        if !pos.is_finite() || !pos_z.is_finite() {
-            return out;
+        for i in PERIOD..len {
+            let pos = self.position[i];
+            let pos_z = self.position_z[i];
+
+            if pos.is_nan() || pos_z.is_nan() {
+                continue;
+            }
+
+            let direction = (pos - 0.5) * 2.0;
+
+            out.push(ScoreRecord::new(
+                ScoreType::Direction,
+                direction.clamp(-1.0, 1.0),
+                0.8,
+                0.7,
+            ));
+
+            let strength = (pos - 0.5).abs() * 2.0;
+
+            out.push(ScoreRecord::new(
+                ScoreType::Strength,
+                strength.clamp(0.0, 1.0),
+                0.9,
+                0.7,
+            ));
+
+            let quality = (1.0 - (pos_z.abs() / 3.0)).clamp(-1.0, 1.0);
+
+            out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.6, 0.6));
         }
-
-        let direction = ((pos - 0.5) * 2.0).clamp(-1.0, 1.0);
-        out.push((ScoreType::Direction, ScoreRecord::new(direction, 0.70)));
-
-        let strength = ((pos - 0.5).abs() * 2.0).clamp(0.0, 1.0);
-        out.push((ScoreType::Strength, ScoreRecord::new(strength, 0.55)));
-
-        let quality = (pos_z.abs() / 2.5).clamp(0.0, 1.0);
-        out.push((ScoreType::Quality, ScoreRecord::new(quality, 0.35)));
-
-        let volatility = (pos_z / 3.0).clamp(-1.0, 1.0);
-        out.push((ScoreType::Volatility, ScoreRecord::new(volatility, 0.20)));
 
         out
     }

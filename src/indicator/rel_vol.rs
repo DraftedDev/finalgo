@@ -79,26 +79,51 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
         !self.vol.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        fn last_finite(values: &[f64]) -> Option<f64> {
-            values.iter().rev().copied().find(|v| v.is_finite())
+    fn score(&self) -> Vec<ScoreRecord> {
+        let len = self.vol.len();
+        let mut out = Vec::with_capacity(len);
+
+        for i in 0..len {
+            let vol = self.vol[i];
+            let smooth = self.vol_smoothed[i];
+            let z = self.vol_z[i];
+
+            if !vol.is_finite() || !smooth.is_finite() || !z.is_finite() {
+                continue;
+            }
+
+            let strength = (vol - 1.0).tanh(); // [-1, 1]
+
+            let strength = (strength + 1.0) / 2.0; // convert to [0,1]
+
+            out.push(ScoreRecord::new(
+                ScoreType::Strength,
+                strength.clamp(0.0, 1.0),
+                0.5, // medium-high importance
+                0.8, // fairly reliable
+            ));
+
+            let stability = if vol != 0.0 {
+                1.0 - ((smooth - vol).abs() / vol).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+
+            let quality = (stability * 2.0 - 1.0).clamp(-1.0, 1.0);
+
+            out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.3, 0.7));
+
+            let direction = z.tanh(); // compress extreme spikes
+
+            out.push(ScoreRecord::new(
+                ScoreType::Direction,
+                direction.clamp(-1.0, 1.0),
+                0.2,
+                0.6,
+            ));
         }
 
-        let Some(smoothed) = last_finite(&self.vol_smoothed) else {
-            return Vec::new();
-        };
-
-        let Some(z) = last_finite(&self.vol_z) else {
-            return Vec::new();
-        };
-
-        let smoothed_component = ((smoothed - 1.0) / 1.5).clamp(-1.0, 1.0);
-
-        let z_component = (z / 3.0).clamp(-1.0, 1.0);
-
-        let quality = (0.7 * smoothed_component + 0.3 * z_component).clamp(-1.0, 1.0);
-
-        vec![(ScoreType::Quality, ScoreRecord::new(quality, 1.0))]
+        out
     }
 
     fn as_any(&self) -> &dyn Any {

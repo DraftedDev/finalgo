@@ -40,10 +40,6 @@ impl<const PERIOD: usize> EfficiencyRatio<PERIOD> {
             .find(|v| v.is_finite())
             .unwrap_or(0.0)
     }
-
-    fn signed_from_unit(v: f64) -> f64 {
-        (v.clamp(0.0, 1.0) * 2.0) - 1.0
-    }
 }
 impl<const PERIOD: usize> Indicator for EfficiencyRatio<PERIOD> {
     fn name(&self) -> String {
@@ -106,21 +102,39 @@ impl<const PERIOD: usize> Indicator for EfficiencyRatio<PERIOD> {
         !self.er.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        let mut out = Vec::new();
+    fn score(&self) -> Vec<ScoreRecord> {
+        let mut out = Vec::with_capacity(3);
 
-        let smoothed = Self::latest_finite(&self.smoothed);
+        let er = Self::latest_finite(&self.smoothed);
         let slope = Self::latest_finite(&self.slope);
         let accel = Self::latest_finite(&self.accel);
 
-        let quality = Self::signed_from_unit(smoothed);
-        out.push((ScoreType::Quality, ScoreRecord::new(quality, 1.0)));
+        let quality = (er * 2.0) - 1.0;
 
-        let direction = slope.tanh(); // smooth clamp to [-1,1]
-        out.push((ScoreType::Direction, ScoreRecord::new(direction, 1.0)));
+        out.push(ScoreRecord::new(
+            ScoreType::Quality,
+            quality.clamp(-1.0, 1.0),
+            0.8,
+            er.clamp(0.0, 1.0),
+        ));
 
-        let strength = accel.abs().tanh();
-        out.push((ScoreType::Strength, ScoreRecord::new(strength, 1.0)));
+        let direction = (slope * 10.0).tanh();
+
+        out.push(ScoreRecord::new(
+            ScoreType::Direction,
+            direction.clamp(-1.0, 1.0),
+            0.6,
+            er.clamp(0.0, 1.0),
+        ));
+
+        let volatility = (accel * 10.0).tanh();
+
+        out.push(ScoreRecord::new(
+            ScoreType::Volatility,
+            volatility.clamp(-1.0, 1.0),
+            0.5,
+            er.clamp(0.0, 1.0),
+        ));
 
         out
     }

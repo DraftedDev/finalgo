@@ -113,44 +113,39 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         !self.rsi.is_empty()
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
-        let len = self.rsi.len();
+    fn score(&self) -> Vec<ScoreRecord> {
+        let mut out = Vec::new();
 
+        let len = self.rsi.len();
         if len == 0 {
-            return vec![];
+            return out;
         }
 
-        let mut out = Vec::with_capacity(len);
-
-        for i in 0..len {
+        for i in 1..len {
             let rsi = self.rsi[i];
             let slope = self.rsi_slope[i];
 
-            if !rsi.is_finite() {
+            if rsi.is_nan() || slope.is_nan() {
                 continue;
             }
 
-            let direction = ((rsi - 50.0) / 50.0).clamp(-1.0, 1.0);
+            let direction = (rsi - 50.0) / 50.0;
             let strength = ((rsi - 50.0).abs() / 50.0).clamp(0.0, 1.0);
+            let quality = (slope / 10.0).clamp(-1.0, 1.0);
+            let volatility = ((slope.abs() * 2.0).clamp(0.0, 1.0) * 2.0) - 1.0;
 
-            let quality = if slope.is_finite() {
-                let normalized_slope = slope.abs().clamp(0.0, 10.0) / 10.0;
-                let clean = 1.0 - normalized_slope;
+            out.push(ScoreRecord::new(ScoreType::Direction, direction, 0.4, 0.8));
 
-                clean.clamp(-1.0, 1.0)
-            } else {
-                0.0
-            };
+            out.push(ScoreRecord::new(ScoreType::Strength, strength, 0.3, 0.8));
 
-            let volatility = {
-                let dist = (rsi - 50.0).abs() / 50.0;
-                dist.clamp(-1.0, 1.0)
-            };
+            out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.2, 0.7));
 
-            out.push((ScoreType::Direction, ScoreRecord::new(direction, 1.0)));
-            out.push((ScoreType::Strength, ScoreRecord::new(strength, 1.0)));
-            out.push((ScoreType::Quality, ScoreRecord::new(quality, 1.0)));
-            out.push((ScoreType::Volatility, ScoreRecord::new(volatility, 1.0)));
+            out.push(ScoreRecord::new(
+                ScoreType::Volatility,
+                volatility,
+                0.2,
+                0.7,
+            ));
         }
 
         out

@@ -196,44 +196,54 @@ impl<const PERIOD: usize> Indicator for AvgDirMovIdx<PERIOD> {
         self.computed
     }
 
-    fn score(&self) -> Vec<(ScoreType, ScoreRecord)> {
+    fn score(&self) -> Vec<ScoreRecord> {
+        if !self.computed || self.adx.is_empty() {
+            return vec![];
+        }
+
+        let i = self.adx.len() - 1;
+
+        let adx = self.adx[i];
+        let plus = self.plus_di[i];
+        let minus = self.minus_di[i];
+
+        if !adx.is_finite() || !plus.is_finite() || !minus.is_finite() {
+            return vec![];
+        }
+
         let mut out = Vec::new();
 
-        let len = self
-            .adx
-            .len()
-            .min(self.plus_di.len())
-            .min(self.minus_di.len());
-        if len == 0 {
-            return out;
+        let di_sum = plus + minus;
+
+        if di_sum > 0.0 {
+            let direction = ((plus - minus) / di_sum).clamp(-1.0, 1.0);
+
+            out.push(ScoreRecord::new(
+                ScoreType::Direction,
+                direction,
+                0.90, // strong directional relevance
+                0.80,
+            ));
         }
 
-        for i in 0..len {
-            let adx = self.adx[i];
-            let plus_di = self.plus_di[i];
-            let minus_di = self.minus_di[i];
+        let strength = (adx / 50.0).clamp(0.0, 1.0);
 
-            if !adx.is_finite() || !plus_di.is_finite() || !minus_di.is_finite() {
-                continue;
-            }
+        out.push(ScoreRecord::new(ScoreType::Strength, strength, 0.95, 0.90));
 
-            let strength = (adx / 100.0).clamp(0.0, 1.0);
+        let quality = ((adx - 20.0) / 30.0).clamp(0.0, 1.0);
+        let quality = quality * 2.0 - 1.0;
 
-            let sum_di = plus_di + minus_di;
-            if sum_di <= 0.0 {
-                continue;
-            }
+        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.75, 0.85));
 
-            let spread = (plus_di - minus_di) / sum_di;
-            let direction = (spread * strength).clamp(-1.0, 1.0);
+        let volatility = ((adx - 25.0) / 25.0).clamp(0.0, 1.0);
+        let volatility = volatility * 2.0 - 1.0;
 
-            let dominance = spread.abs() * strength;
-            let quality = (dominance * 2.0 - 1.0).clamp(-1.0, 1.0);
-
-            out.push((ScoreType::Direction, ScoreRecord::new(direction, 1.0)));
-            out.push((ScoreType::Strength, ScoreRecord::new(strength, 1.0)));
-            out.push((ScoreType::Quality, ScoreRecord::new(quality, 1.0)));
-        }
+        out.push(ScoreRecord::new(
+            ScoreType::Volatility,
+            volatility,
+            0.35,
+            0.60,
+        ));
 
         out
     }
