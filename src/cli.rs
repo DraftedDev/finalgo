@@ -1,4 +1,4 @@
-use crate::consts::{CANDLE_LOOK_BACK, TARGET_CANDLE_LOOK_BACK};
+use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_CANDLE_LOOK_BACK};
 use crate::data::{DataKey, StockData};
 use crate::database::Database;
 use crate::eval::{Evaluator, ScoreLoss};
@@ -35,8 +35,6 @@ impl Cli {
     }
 
     pub async fn eval(&self, args: EvalArgs) {
-        let mut eval = Evaluator::new();
-
         let end = utils::parse_naive_date(&args.end);
 
         let mut t = utils::subtract_naive_date(end, (args.samples as i64 + 5) as usize);
@@ -60,47 +58,51 @@ impl Cli {
             t = utils::add_naive_date(t, 1);
         }
 
-        let fetched = utils::with_progress("Fetching", data.len() as u64, |span| async move {
-            let mut set = JoinSet::new();
+        let mut eval = utils::with_progress("Fetching", data.len() as u64, |span| async move {
             let database = Database::new();
+            let mut eval = Evaluator::new();
 
-            for (t, t_target, ticker) in data {
-                let database = database.clone();
-                let span = span.clone();
-                set.spawn(async move {
-                    let data = StockData::fetch(
-                        &database,
-                        DataKey {
-                            end: utils::format_naive_date(t),
-                            size: CANDLE_LOOK_BACK,
-                            ticker: ticker.clone(),
-                        },
-                    )
-                    .await;
+            for chunk in data.chunks(FETCH_CHUNK_SIZE).map(|chunk| chunk.to_vec()) {
+                let mut set = JoinSet::new();
 
-                    let target = StockData::fetch(
-                        &database,
-                        DataKey {
-                            end: utils::format_naive_date(t_target),
-                            size: TARGET_CANDLE_LOOK_BACK,
-                            ticker: ticker.clone(),
-                        },
-                    )
-                    .await;
+                for (t, t_target, ticker) in chunk {
+                    let database = database.clone();
+                    let span = span.clone();
+                    set.spawn(async move {
+                        let data = StockData::fetch(
+                            &database,
+                            DataKey {
+                                end: utils::format_naive_date(t),
+                                size: CANDLE_LOOK_BACK,
+                                ticker: ticker.clone(),
+                            },
+                        )
+                        .await;
 
-                    span.pb_inc(1);
+                        let target = StockData::fetch(
+                            &database,
+                            DataKey {
+                                end: utils::format_naive_date(t_target),
+                                size: TARGET_CANDLE_LOOK_BACK,
+                                ticker: ticker.clone(),
+                            },
+                        )
+                        .await;
 
-                    (data, target)
-                });
+                        span.pb_inc(1);
+
+                        (data, target)
+                    });
+                }
+
+                for (predict, target) in set.join_all().await {
+                    eval.add(predict, target);
+                }
             }
 
-            set.join_all().await
+            eval
         })
         .await;
-
-        for (predict, target) in fetched {
-            eval.add(predict, target);
-        }
 
         tracing::info!("Evaluating...");
 
