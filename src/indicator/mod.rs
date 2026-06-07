@@ -35,6 +35,9 @@ pub mod stochastic;
 #[allow(unused)]
 pub mod swing;
 
+#[allow(unused)]
+pub mod liquidity;
+
 pub trait Indicator: 'static {
     fn name(&self) -> String;
 

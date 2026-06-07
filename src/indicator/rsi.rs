@@ -19,7 +19,6 @@ use std::any::Any;
 ///
 /// RS = avg_gain / avg_loss
 /// RSI = 100 - (100 / (1 + RS))
-///
 /// RSI_slope = RSI_t - RSI_{t-1}
 /// ```
 pub struct RelStrengthIdx<const PERIOD: usize> {
@@ -33,18 +32,6 @@ impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
             rsi: Vec::new(),
             rsi_slope: Vec::new(),
         }
-    }
-
-    fn compute_last_valid(&self) -> Option<(f64, f64)> {
-        for i in (1..self.rsi.len()).rev() {
-            let rsi = self.rsi[i];
-            let slope = self.rsi_slope[i];
-
-            if rsi.is_finite() && slope.is_finite() {
-                return Some((rsi, slope));
-            }
-        }
-        None
     }
 }
 
@@ -108,7 +95,7 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
 
             self.rsi[i] = rsi;
 
-            if !prev_rsi.is_nan() {
+            if prev_rsi.is_finite() {
                 self.rsi_slope[i] = rsi - prev_rsi;
             }
 
@@ -123,45 +110,64 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
     fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
-        let Some((rsi, slope)) = self.compute_last_valid() else {
+        let len = self.rsi.len().min(self.rsi_slope.len());
+        if len == 0 {
             return out;
-        };
+        }
 
-        let direction = (rsi - 50.0) / 50.0;
+        for i in 0..len {
+            let rsi = self.rsi[i];
+            let slope = self.rsi_slope[i];
 
-        let strength = ((rsi - 50.0).abs() / 50.0).clamp(0.0, 1.0);
+            if !rsi.is_finite() || !slope.is_finite() {
+                continue;
+            }
 
-        let quality = (slope / 5.0).clamp(-1.0, 1.0);
+            let direction = ((rsi - 50.0) / 50.0).clamp(-1.0, 1.0);
 
-        let volatility = ((slope.abs() / 10.0).tanh() * 2.0 - 1.0).clamp(-1.0, 1.0);
+            let strength = direction.abs().clamp(0.0, 1.0);
 
-        let weight = 0.35;
-        let confidence = 0.85;
+            let slope_norm = (slope / 10.0).clamp(-1.0, 1.0);
 
-        out.push(ScoreRecord::new(
-            ScoreType::Direction,
-            direction,
-            weight,
-            confidence,
-        ));
-        out.push(ScoreRecord::new(
-            ScoreType::Strength,
-            strength,
-            weight,
-            confidence,
-        ));
-        out.push(ScoreRecord::new(
-            ScoreType::Quality,
-            quality,
-            weight,
-            confidence,
-        ));
-        out.push(ScoreRecord::new(
-            ScoreType::Volatility,
-            volatility,
-            weight,
-            confidence,
-        ));
+            let quality = if slope_norm.abs() < 1e-6 {
+                0.0
+            } else if (direction > 0.0 && slope_norm > 0.0) || (direction < 0.0 && slope_norm < 0.0)
+            {
+                (1.0 - slope_norm.abs() * 0.5).clamp(0.0, 1.0)
+            } else {
+                (-slope_norm.abs()).clamp(-1.0, 0.0)
+            };
+
+            let confidence = (strength * (1.0 - slope_norm.abs())).clamp(0.0, 1.0);
+
+            let recency = if len > 1 {
+                i as f64 / (len - 1) as f64
+            } else {
+                1.0
+            };
+            let weight = (0.25 + 0.75 * recency).clamp(0.0, 1.0);
+
+            out.push(ScoreRecord::new(
+                ScoreType::Direction,
+                direction,
+                weight,
+                confidence,
+            ));
+
+            out.push(ScoreRecord::new(
+                ScoreType::Strength,
+                strength,
+                weight,
+                confidence,
+            ));
+
+            out.push(ScoreRecord::new(
+                ScoreType::Quality,
+                quality,
+                weight,
+                confidence,
+            ));
+        }
 
         out
     }

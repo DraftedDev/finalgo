@@ -1,9 +1,8 @@
 use crate::data::StockData;
 use crate::indicator::Indicator;
-use crate::indicator::adx::AvgDirMovIdx;
 use crate::indicator::atr::AvgTrueRange;
-use crate::indicator::donchian::DonchianPosition;
 use crate::indicator::ema::ExpMovAvg;
+use crate::indicator::liquidity::LiquiditySweep;
 use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::stochastic::Stochastic;
 use crate::indicator::swing::SwingStructure;
@@ -19,11 +18,11 @@ pub fn build(data: StockData) -> Interface {
     interface.add_indicator(ExpMovAvg::<20>::new());
     interface.add_indicator(RelStrengthIdx::<14>::new());
     interface.add_indicator(Stochastic::<14, 3>::new());
-    interface.add_indicator(DonchianPosition::<20>::new());
-    interface.add_indicator(AvgDirMovIdx::<14>::new());
     interface.add_indicator(SwingStructure::<5>::new());
     interface.add_indicator(SwingStructure::<10>::new());
     interface.add_indicator(SwingStructure::<20>::new());
+    interface.add_indicator(LiquiditySweep::<10>::new());
+    interface.add_indicator(LiquiditySweep::<20>::new());
 
     interface
 }
