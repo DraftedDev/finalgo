@@ -196,7 +196,7 @@ impl<const PERIOD: usize> Indicator for AvgDirMovIdx<PERIOD> {
         self.computed
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         if !self.computed || self.adx.is_empty() {
             return vec![];
         }

@@ -72,7 +72,7 @@ impl<const PERIOD: usize> Indicator for BollingerWidth<PERIOD> {
         !self.width.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
         let Some(&value) = self.min_max.last() else {

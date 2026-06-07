@@ -120,7 +120,7 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         !self.rsi.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
         let Some((rsi, slope)) = self.compute_last_valid() else {

@@ -66,7 +66,7 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
         !self.roc.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let len = self.roc.len();
         if len == 0 {
             return vec![];

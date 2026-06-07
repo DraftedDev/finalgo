@@ -89,7 +89,7 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
         !self.atr.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
         let atr_z = match self.atr_z.last() {

@@ -87,7 +87,7 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
         !self.k.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
         let len = self.k.len().min(self.d.len());
 

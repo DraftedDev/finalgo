@@ -80,7 +80,7 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
         !self.ema.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let mut out = Vec::with_capacity(self.ema.len().saturating_mul(3));
 
         for i in 2..self.ema.len() {

@@ -135,7 +135,7 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
         !self.vol.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let window = 10;
 
         let rvol = Self::mean_last(&self.vol_smoothed, window);

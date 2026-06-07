@@ -126,7 +126,7 @@ impl<const PERIOD: usize> Indicator for EfficiencyRatio<PERIOD> {
         !self.er.is_empty()
     }
 
-    fn score(&self) -> Vec<ScoreRecord> {
+    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
         let window = 10;
 
         let er_mean = Self::mean_last_n(&self.smoothed, window);
