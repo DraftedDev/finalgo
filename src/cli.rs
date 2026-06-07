@@ -108,10 +108,10 @@ impl Cli {
         let (losses, report) = eval.eval().await;
         let loss = ScoreLoss::aggregate(&losses);
 
-        tracing::info!("[############ LOSS ############]");
+        tracing::info!("[############### LOSS ###############]");
         loss.print();
 
-        tracing::info!("[########## ACCURACY ##########]");
+        tracing::info!("[############### ACCURACY ###############]");
         report.print();
     }
 }

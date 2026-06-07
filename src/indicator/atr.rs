@@ -8,7 +8,7 @@ use std::any::Any;
 ///
 /// ## Purpose
 /// - Volatility
-/// - Risk Momentum
+/// - Risk regime
 ///
 /// ## Math
 ///
@@ -18,6 +18,7 @@ use std::any::Any;
 ///     |high - prev_close|,
 ///     |low - prev_close|
 /// );
+///
 /// α = 2 / (period + 1)
 ///
 /// ATR_t = α * TR_t + (1 - α) * ATR_{t-1}
@@ -49,11 +50,17 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
         let lows = &data.lows;
         let closes = &data.closes;
 
-        let mut tr_values = Vec::with_capacity(closes.len());
+        let len = closes.len();
+        if len == 0 {
+            self.atr.clear();
+            self.atr_z.clear();
+            return;
+        }
 
+        let mut tr_values = Vec::with_capacity(len);
         tr_values.push(highs[0] - lows[0]);
 
-        for i in 1..closes.len() {
+        for i in 1..len {
             let tr = f64::max(
                 highs[i] - lows[i],
                 f64::max(
@@ -67,10 +74,10 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
 
         let alpha = 2.0 / (PERIOD as f64 + 1.0);
 
-        self.atr = vec![f64::NAN; closes.len()];
+        self.atr = vec![0.0; len];
         let mut atr = tr_values[0];
 
-        for i in 0..tr_values.len() {
+        for i in 0..len {
             atr = alpha * tr_values[i] + (1.0 - alpha) * atr;
             self.atr[i] = atr;
         }
@@ -90,18 +97,18 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
             _ => return out,
         };
 
-        let normalized_vol = (atr_z / 2.0).clamp(-1.0, 1.0);
+        let normalized_vol = (atr_z / 2.0).tanh();
 
         out.push(ScoreRecord::new(
             ScoreType::Volatility,
-            normalized_vol,
+            normalized_vol.clamp(-1.0, 1.0),
             0.85,
             0.90,
         ));
 
-        let quality = (-normalized_vol * 0.5).clamp(-1.0, 1.0);
+        let quality = (-normalized_vol * 0.25).clamp(-1.0, 1.0);
 
-        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.25, 0.70));
+        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.10, 0.50));
 
         out
     }

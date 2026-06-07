@@ -214,36 +214,20 @@ impl<const PERIOD: usize> Indicator for AvgDirMovIdx<PERIOD> {
         let mut out = Vec::new();
 
         let di_sum = plus + minus;
-
         if di_sum > 0.0 {
             let direction = ((plus - minus) / di_sum).clamp(-1.0, 1.0);
 
             out.push(ScoreRecord::new(
                 ScoreType::Direction,
                 direction,
-                0.90, // strong directional relevance
+                0.90,
                 0.80,
             ));
         }
 
-        let strength = (adx / 50.0).clamp(0.0, 1.0);
+        let strength = (adx / 100.0).clamp(0.0, 1.0);
 
         out.push(ScoreRecord::new(ScoreType::Strength, strength, 0.95, 0.90));
-
-        let quality = ((adx - 20.0) / 30.0).clamp(0.0, 1.0);
-        let quality = quality * 2.0 - 1.0;
-
-        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.75, 0.85));
-
-        let volatility = ((adx - 25.0) / 25.0).clamp(0.0, 1.0);
-        let volatility = volatility * 2.0 - 1.0;
-
-        out.push(ScoreRecord::new(
-            ScoreType::Volatility,
-            volatility,
-            0.35,
-            0.60,
-        ));
 
         out
     }

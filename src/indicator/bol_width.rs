@@ -75,12 +75,9 @@ impl<const PERIOD: usize> Indicator for BollingerWidth<PERIOD> {
     fn score(&self) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
-        if self.min_max.is_empty() {
+        let Some(&value) = self.min_max.last() else {
             return out;
-        }
-
-        let last_idx = self.min_max.len() - 1;
-        let value = self.min_max[last_idx];
+        };
 
         if !value.is_finite() {
             return out;
@@ -91,17 +88,8 @@ impl<const PERIOD: usize> Indicator for BollingerWidth<PERIOD> {
         out.push(ScoreRecord::new(
             ScoreType::Volatility,
             volatility_signal.clamp(-1.0, 1.0),
-            0.7, // volatility is primary signal here
-            1.0, // confidence high because min-max is stable
-        ));
-
-        let deviation = (value - 0.5).abs() * 2.0; // 0..1
-
-        out.push(ScoreRecord::new(
-            ScoreType::Strength,
-            deviation.clamp(0.0, 1.0),
-            0.3, // secondary signal
-            0.9,
+            1.0,
+            0.8,
         ));
 
         out

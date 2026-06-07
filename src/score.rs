@@ -43,34 +43,27 @@ impl Score {
     /// Compute final aggregated result.
     pub fn compute(&self) -> ScoreResult {
         let (direction, direction_label) = self.compute_score_of(ScoreType::Direction);
-
         let (quality, quality_label) = self.compute_score_of(ScoreType::Quality);
-
         let (strength, strength_label) = self.compute_score_of(ScoreType::Strength);
-
         let (volatility, volatility_label) = self.compute_score_of(ScoreType::Volatility);
 
         let signal = Self::final_signal(direction, strength, quality, volatility);
 
         let final_score = match signal {
-            v if v >= 0.15 => FinalScore::Long,
-            v if v <= -0.15 => FinalScore::Short,
+            v if v >= 0.10 => FinalScore::Long,
+            v if v <= -0.10 => FinalScore::Short,
             _ => FinalScore::Neutral,
         };
 
         ScoreResult {
             direction,
             direction_label,
-
             quality,
             quality_label,
-
             strength,
             strength_label,
-
             volatility,
             volatility_label,
-
             signal,
             final_score,
         }
@@ -81,25 +74,21 @@ impl Score {
         match record.ty {
             ScoreType::Direction => {
                 assert_range(record.value, -1.0, 1.0, "direction");
-
                 self.direction.push(record);
             }
 
             ScoreType::Quality => {
                 assert_range(record.value, -1.0, 1.0, "quality");
-
                 self.quality.push(record);
             }
 
             ScoreType::Strength => {
                 assert_range(record.value, 0.0, 1.0, "strength");
-
                 self.strength.push(record);
             }
 
             ScoreType::Volatility => {
                 assert_range(record.value, -1.0, 1.0, "volatility");
-
                 self.volatility.push(record);
             }
         }
@@ -129,8 +118,7 @@ impl Score {
         let mut total_weight = 0.0;
 
         for record in records {
-            // Confidence scales effective weight
-            let effective_weight = record.weight * record.confidence;
+            let effective_weight = record.weight * record.confidence.powi(2);
 
             weighted_sum += record.value * effective_weight;
             total_weight += effective_weight;
@@ -162,22 +150,22 @@ impl Score {
     /// Output range:
     /// [-1.0, 1.0]
     ///
-    /// Notes:
-    ///
-    /// - Direction is primary driver.
-    /// - Strength amplifies conviction.
-    /// - Quality validates signal reliability.
-    /// - Volatility dampens unstable regimes.
+    /// This keeps direction as the base signal and uses strength,
+    /// quality, and volatility as modifiers instead of suppressing
+    /// the signal too aggressively.
     fn final_signal(direction: f64, strength: f64, quality: f64, volatility: f64) -> f64 {
+        let direction = direction.clamp(-1.0, 1.0);
+        let strength = strength.clamp(0.0, 1.0);
+
         let quality_factor = ((quality + 1.0) / 2.0).clamp(0.0, 1.0);
-        let volatility_factor = 1.0 - ((volatility + 1.0) / 2.0);
+        let stability_factor = (1.0 - ((volatility + 1.0) / 2.0)).clamp(0.0, 1.0);
 
-        let amplification =
-            0.7 + strength * 0.45 + quality_factor * 0.35 + volatility_factor * 0.20;
+        let confidence =
+            (strength * 0.45 + quality_factor * 0.35 + stability_factor * 0.20).clamp(0.0, 1.0);
 
-        let signal = direction * amplification;
+        let gain = 0.85 + confidence * 0.65;
 
-        signal.clamp(-1.0, 1.0)
+        (direction * gain).clamp(-1.0, 1.0)
     }
 
     fn direction_label(v: f64) -> String {
@@ -249,13 +237,6 @@ impl ScoreRecord {
         assert!(value.is_finite(), "score value must be finite");
         assert!(weight.is_finite(), "score weight must be finite");
         assert!(confidence.is_finite(), "score confidence must be finite");
-
-        match ty {
-            ScoreType::Direction => {}
-            ScoreType::Quality => {}
-            ScoreType::Strength => {}
-            ScoreType::Volatility => {}
-        }
 
         assert!(
             (0.0..=1.0).contains(&weight),

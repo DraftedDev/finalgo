@@ -45,6 +45,10 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
         let closes = &int.raw().closes;
         let alpha = 2.0 / (PERIOD as f64 + 1.0);
 
+        self.ema.clear();
+        self.distance.clear();
+        self.slope.clear();
+
         self.ema.reserve(closes.len());
         self.distance.reserve(closes.len());
         self.slope.reserve(closes.len());
@@ -55,13 +59,12 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
         for &price in closes.iter() {
             ema = alpha * price + (1.0 - alpha) * ema;
 
-            // EMA line
             self.ema.push(ema);
 
-            // Distance (bias)
+            // Raw bias (will be normalized later)
             self.distance.push(price - ema);
 
-            // Slope (trend direction)
+            // Trend slope
             self.slope.push(ema - prev_ema);
 
             prev_ema = ema;
@@ -78,36 +81,40 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
     }
 
     fn score(&self) -> Vec<ScoreRecord> {
-        let mut out = Vec::with_capacity(self.ema.len());
+        let mut out = Vec::with_capacity(self.ema.len().saturating_mul(3));
 
-        for i in 1..self.ema.len() {
+        for i in 2..self.ema.len() {
             let distance = self.distance[i];
             let slope = self.slope[i];
 
-            let direction = distance * 0.7 + slope * 0.3;
-            let quality = -slope.abs();
-            let strength = distance.abs().clamp(0.0, 1.0);
+            let prev_slope = self.slope[i - 1];
+
+            let ema_bias = distance.tanh(); // stabilize extremes
+            let trend = slope.tanh();
+
+            let direction =
+                (ema_bias * 0.65) + (trend * 0.25) + ((ema_bias.signum() * trend).tanh() * 0.10);
+
+            let slope_consistency = 1.0 - (slope - prev_slope).abs().tanh();
+            let quality = slope_consistency * 2.0 - 1.0; // map to [-1,1]
+
+            let strength = (ema_bias.abs() * 0.6 + slope.abs() * 0.4).clamp(0.0, 1.0);
 
             out.push(ScoreRecord::new(
                 ScoreType::Direction,
                 direction.clamp(-1.0, 1.0),
-                0.6,
+                0.8,
                 1.0,
             ));
 
             out.push(ScoreRecord::new(
                 ScoreType::Quality,
                 quality.clamp(-1.0, 1.0),
-                0.4,
+                0.5,
                 1.0,
             ));
 
-            out.push(ScoreRecord::new(
-                ScoreType::Strength,
-                strength.clamp(0.0, 1.0),
-                0.7,
-                1.0,
-            ));
+            out.push(ScoreRecord::new(ScoreType::Strength, strength, 0.7, 1.0));
         }
 
         out

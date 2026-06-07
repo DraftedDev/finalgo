@@ -34,6 +34,18 @@ impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
             rsi_slope: Vec::new(),
         }
     }
+
+    fn compute_last_valid(&self) -> Option<(f64, f64)> {
+        for i in (1..self.rsi.len()).rev() {
+            let rsi = self.rsi[i];
+            let slope = self.rsi_slope[i];
+
+            if rsi.is_finite() && slope.is_finite() {
+                return Some((rsi, slope));
+            }
+        }
+        None
+    }
 }
 
 impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
@@ -57,7 +69,6 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
 
         for i in 1..len {
             let change = closes[i] - closes[i - 1];
-
             if change > 0.0 {
                 gains[i] = change;
             } else {
@@ -65,7 +76,6 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
             }
         }
 
-        // Seed average
         let mut avg_gain = 0.0;
         let mut avg_loss = 0.0;
 
@@ -77,16 +87,14 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         avg_gain /= PERIOD as f64;
         avg_loss /= PERIOD as f64;
 
-        // First valid RSI index
         let mut prev_rsi = f64::NAN;
 
         for i in PERIOD..len {
             avg_gain = (avg_gain * (PERIOD as f64 - 1.0) + gains[i]) / PERIOD as f64;
             avg_loss = (avg_loss * (PERIOD as f64 - 1.0) + losses[i]) / PERIOD as f64;
 
-            // RS Calculation
             let rs = match (avg_gain, avg_loss) {
-                (0.0, 0.0) => 50.0,
+                (0.0, 0.0) => 1.0,
                 (_, 0.0) => f64::INFINITY,
                 (0.0, _) => 0.0,
                 _ => avg_gain / avg_loss,
@@ -100,7 +108,6 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
 
             self.rsi[i] = rsi;
 
-            // RSI Slope
             if !prev_rsi.is_nan() {
                 self.rsi_slope[i] = rsi - prev_rsi;
             }
@@ -116,37 +123,45 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
     fn score(&self) -> Vec<ScoreRecord> {
         let mut out = Vec::new();
 
-        let len = self.rsi.len();
-        if len == 0 {
+        let Some((rsi, slope)) = self.compute_last_valid() else {
             return out;
-        }
+        };
 
-        for i in 1..len {
-            let rsi = self.rsi[i];
-            let slope = self.rsi_slope[i];
+        let direction = (rsi - 50.0) / 50.0;
 
-            if rsi.is_nan() || slope.is_nan() {
-                continue;
-            }
+        let strength = ((rsi - 50.0).abs() / 50.0).clamp(0.0, 1.0);
 
-            let direction = (rsi - 50.0) / 50.0;
-            let strength = ((rsi - 50.0).abs() / 50.0).clamp(0.0, 1.0);
-            let quality = (slope / 10.0).clamp(-1.0, 1.0);
-            let volatility = ((slope.abs() * 2.0).clamp(0.0, 1.0) * 2.0) - 1.0;
+        let quality = (slope / 5.0).clamp(-1.0, 1.0);
 
-            out.push(ScoreRecord::new(ScoreType::Direction, direction, 0.4, 0.8));
+        let volatility = ((slope.abs() / 10.0).tanh() * 2.0 - 1.0).clamp(-1.0, 1.0);
 
-            out.push(ScoreRecord::new(ScoreType::Strength, strength, 0.3, 0.8));
+        let weight = 0.35;
+        let confidence = 0.85;
 
-            out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.2, 0.7));
-
-            out.push(ScoreRecord::new(
-                ScoreType::Volatility,
-                volatility,
-                0.2,
-                0.7,
-            ));
-        }
+        out.push(ScoreRecord::new(
+            ScoreType::Direction,
+            direction,
+            weight,
+            confidence,
+        ));
+        out.push(ScoreRecord::new(
+            ScoreType::Strength,
+            strength,
+            weight,
+            confidence,
+        ));
+        out.push(ScoreRecord::new(
+            ScoreType::Quality,
+            quality,
+            weight,
+            confidence,
+        ));
+        out.push(ScoreRecord::new(
+            ScoreType::Volatility,
+            volatility,
+            weight,
+            confidence,
+        ));
 
         out
     }

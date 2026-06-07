@@ -1,6 +1,6 @@
 use crate::indicator::Indicator;
 use crate::interface::Interface;
-use crate::math::{mean, z_score};
+use crate::math::mean;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
@@ -30,6 +30,54 @@ impl<const PERIOD: usize> RelativeVolume<PERIOD> {
             vol_z: Vec::new(),
         }
     }
+
+    fn mean_last(values: &[f64], n: usize) -> f64 {
+        let start = values.len().saturating_sub(n);
+        let slice = &values[start..];
+
+        let mut sum = 0.0;
+        let mut count = 0;
+
+        for v in slice {
+            if v.is_finite() {
+                sum += *v;
+                count += 1;
+            }
+        }
+
+        if count == 0 { 0.0 } else { sum / count as f64 }
+    }
+
+    fn stability(values: &[f64], n: usize) -> f64 {
+        let start = values.len().saturating_sub(n);
+        let slice = &values[start..];
+
+        let mut mean = 0.0;
+        let mut count = 0;
+
+        for v in slice {
+            if v.is_finite() {
+                mean += *v;
+                count += 1;
+            }
+        }
+
+        if count == 0 {
+            return 0.0;
+        }
+
+        mean /= count as f64;
+
+        let mut var = 0.0;
+        for v in slice {
+            if v.is_finite() {
+                let d = v - mean;
+                var += d * d;
+            }
+        }
+
+        1.0 / (1.0 + (var / count as f64).sqrt())
+    }
 }
 
 impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
@@ -45,33 +93,41 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
         self.vol_smoothed = vec![0.0; len];
         self.vol_z = vec![0.0; len];
 
-        // Raw RVOL
         for i in PERIOD..len {
             let window = &volumes[i - PERIOD..i];
             let avg = mean(window);
 
-            self.vol[i] = if avg != 0.0 {
-                volumes[i] / avg
-            } else {
-                1.0 // neutral instead of 0.0 (important fix)
-            };
+            self.vol[i] = if avg > 0.0 { volumes[i] / avg } else { 1.0 };
         }
 
-        // Smoothed RVOL (EMA)
         let alpha = 2.0 / (PERIOD as f64 + 1.0);
-        let mut ema = self.vol[PERIOD];
+        let mut ema = 1.0;
 
-        for i in PERIOD..len {
+        for i in 0..len {
             ema = alpha * self.vol[i] + (1.0 - alpha) * ema;
             self.vol_smoothed[i] = ema;
         }
 
-        // Z-Score RVOL
-        let clean_slice = &self.vol[PERIOD..];
-        let z = z_score(clean_slice);
+        let mut mean = 0.0;
+        let mut count = 0;
 
         for i in PERIOD..len {
-            self.vol_z[i] = z[i - PERIOD];
+            mean += self.vol[i];
+            count += 1;
+        }
+
+        mean /= count.max(1) as f64;
+
+        let mut var = 0.0;
+        for i in PERIOD..len {
+            let d = self.vol[i] - mean;
+            var += d * d;
+        }
+
+        let std = (var / count.max(1) as f64).sqrt().max(1e-8);
+
+        for i in PERIOD..len {
+            self.vol_z[i] = (self.vol[i] - mean) / std;
         }
     }
 
@@ -80,50 +136,40 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
     }
 
     fn score(&self) -> Vec<ScoreRecord> {
-        let len = self.vol.len();
-        let mut out = Vec::with_capacity(len);
+        let window = 10;
 
-        for i in 0..len {
-            let vol = self.vol[i];
-            let smooth = self.vol_smoothed[i];
-            let z = self.vol_z[i];
+        let rvol = Self::mean_last(&self.vol_smoothed, window);
+        let z = Self::mean_last(&self.vol_z, window);
+        let stability = Self::stability(&self.vol_smoothed, window);
 
-            if !vol.is_finite() || !smooth.is_finite() || !z.is_finite() {
-                continue;
-            }
+        let strength = ((rvol - 1.0) * 0.8).tanh();
 
-            let strength = (vol - 1.0).tanh(); // [-1, 1]
+        let quality = (stability * 2.0 - 1.0).tanh();
 
-            let strength = (strength + 1.0) / 2.0; // convert to [0,1]
+        let direction = (z * 0.5 + (rvol - 1.0) * 0.5).tanh();
 
-            out.push(ScoreRecord::new(
+        let confidence = stability;
+
+        vec![
+            ScoreRecord::new(
                 ScoreType::Strength,
-                strength.clamp(0.0, 1.0),
-                0.5, // medium-high importance
-                0.8, // fairly reliable
-            ));
-
-            let stability = if vol != 0.0 {
-                1.0 - ((smooth - vol).abs() / vol).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-
-            let quality = (stability * 2.0 - 1.0).clamp(-1.0, 1.0);
-
-            out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.3, 0.7));
-
-            let direction = z.tanh(); // compress extreme spikes
-
-            out.push(ScoreRecord::new(
+                ((strength + 1.0) / 2.0).clamp(0.0, 1.0),
+                0.6,
+                confidence,
+            ),
+            ScoreRecord::new(
+                ScoreType::Quality,
+                quality.clamp(-1.0, 1.0),
+                0.4,
+                confidence,
+            ),
+            ScoreRecord::new(
                 ScoreType::Direction,
                 direction.clamp(-1.0, 1.0),
-                0.2,
-                0.6,
-            ));
-        }
-
-        out
+                0.3,
+                confidence,
+            ),
+        ]
     }
 
     fn as_any(&self) -> &dyn Any {

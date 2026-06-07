@@ -61,7 +61,3 @@ pub fn std_dev(values: &[f64], mean: f64) -> f64 {
 
     variance.sqrt()
 }
-
-pub fn ratio(a: usize, b: usize) -> f64 {
-    if b == 0 { 0.0 } else { a as f64 / b as f64 }
-}

@@ -48,17 +48,17 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
             let prev = closes[i - PERIOD];
             let curr = closes[i];
 
-            let value = if prev != 0.0 {
-                (curr - prev) / prev
-            } else {
-                f64::NAN
-            };
+            if prev.abs() < 1e-12 || !prev.is_finite() || !curr.is_finite() {
+                continue;
+            }
+
+            let value = (curr - prev) / prev;
 
             self.roc[i] = value;
             self.roc_abs[i] = value.abs();
         }
 
-        // IMPORTANT: z-score should ignore NaN
+        // robust normalization (ignores NaN)
         self.roc_z = z_score(&self.roc);
     }
 
@@ -67,11 +67,9 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
     }
 
     fn score(&self) -> Vec<ScoreRecord> {
-        let mut out = Vec::new();
-
         let len = self.roc.len();
         if len == 0 {
-            return out;
+            return vec![];
         }
 
         let i = len - 1;
@@ -80,30 +78,38 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
         let roc_abs = self.roc_abs[i];
         let roc_z = self.roc_z[i];
 
-        // Skip invalid values
         if !roc.is_finite() || !roc_abs.is_finite() || !roc_z.is_finite() {
-            return out;
+            return vec![];
         }
+
+        let direction = (roc * 8.0).tanh();
+
+        let mut out = Vec::with_capacity(3);
 
         out.push(ScoreRecord::new(
             ScoreType::Direction,
-            roc.clamp(-1.0, 1.0),
-            0.9, // high importance for momentum direction
-            1.0, // ROC is deterministic from price
+            direction,
+            0.95, // ROC is core momentum signal
+            1.0,
         ));
 
-        let strength = (roc_abs * 10.0).tanh(); // smooth saturation
+        let strength = (roc_abs * 6.0).tanh();
 
         out.push(ScoreRecord::new(
             ScoreType::Strength,
             strength.clamp(0.0, 1.0),
-            0.8,
+            0.85,
             1.0,
         ));
 
-        let quality = (1.0 - roc_z.abs().tanh()).clamp(-1.0, 1.0);
+        let quality = (-(roc_z.abs() * 0.7)).tanh();
 
-        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.6, 1.0));
+        out.push(ScoreRecord::new(
+            ScoreType::Quality,
+            quality.clamp(-1.0, 1.0),
+            0.7,
+            1.0,
+        ));
 
         out
     }

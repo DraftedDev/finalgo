@@ -1,19 +1,17 @@
+use crate::consts::TARGET_DEAD_ZONE;
 use crate::data::StockData;
 use crate::interface::Interface;
 use crate::score::{FinalScore, ScoreResult};
 use crate::utils::round_to_two_decimals;
-use crate::{interface, math, utils};
-use std::fmt::Debug;
+use crate::{interface, utils};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Evaluates prediction quality against future realized candles.
 ///
-/// Architecture:
-/// - prediction = indicator/score system output
-/// - target = synthesized future market behavior
-/// - loss = bounded [0, 1]
-///
-/// Lower loss = better.
+/// Design goals:
+/// - target labels must match the model’s signal space
+/// - small/noisy moves should not dominate labels
+/// - report precision/recall for long/short/neutral separately
 pub struct Evaluator {
     data: Vec<(Interface, StockData)>,
 }
@@ -30,28 +28,50 @@ impl Evaluator {
     pub async fn eval(&mut self) -> (Vec<ScoreLoss>, AccuracyReport) {
         utils::with_progress("Evaluating", self.data.len() as u64, |span| async move {
             let mut losses = Vec::with_capacity(self.data.len());
-
             let mut predictions = Vec::with_capacity(self.data.len());
 
             for (int, target_data) in &mut self.data {
                 let predict = int.run(false);
-
                 let target = Self::build_target_result(target_data);
 
                 span.pb_inc(1);
 
                 losses.push(ScoreLoss::new(predict.clone(), target.clone()));
-
                 predictions.push((predict, target));
             }
 
             let report = AccuracyReport::compute(&predictions);
+
+            let total = self.data.len() as f64;
+
+            tracing::info!(
+                "Longs: Target {}% || Predicted {}%",
+                round_to_two_decimals(report.target_long as f64 / total * 100.0),
+                round_to_two_decimals(report.predicted_long as f64 / total * 100.0),
+            );
+            tracing::info!(
+                "Shorts: Target {}% || Predicted {}%",
+                round_to_two_decimals(report.target_short as f64 / total * 100.0),
+                round_to_two_decimals(report.predicted_short as f64 / total * 100.0),
+            );
+            tracing::info!(
+                "Neutrals: Target {}% || Predicted {}%",
+                round_to_two_decimals(report.target_neutral as f64 / total * 100.0),
+                round_to_two_decimals(report.predicted_neutral as f64 / total * 100.0),
+            );
 
             (losses, report)
         })
         .await
     }
 
+    /// Build target-side score space from realized future candles.
+    ///
+    /// Important:
+    /// - direction is the signed future move
+    /// - strength is the magnitude of that move
+    /// - signal is direction * strength
+    /// - final classification is based on signal, not raw return directly
     fn build_target_result(target: &StockData) -> ScoreResult {
         assert!(
             !target.opens.is_empty(),
@@ -60,14 +80,18 @@ impl Evaluator {
 
         let len = target.opens.len();
 
-        if len == 0 {
-            panic!("Empty target dataset");
-        } else if len < 5 {
-            tracing::warn!("Only using {len}/5 candles for target score generation!");
-        }
-
         let open = target.opens[0];
         let close = target.closes[len - 1];
+
+        let raw_return = if open.abs() > 1e-12 {
+            (close - open) / open
+        } else {
+            0.0
+        };
+
+        let direction = (raw_return * 12.0).tanh().clamp(-1.0, 1.0);
+
+        let strength = (raw_return.abs() * 12.0).tanh().clamp(0.0, 1.0);
 
         let high = target
             .highs
@@ -76,15 +100,6 @@ impl Evaluator {
             .fold(f64::NEG_INFINITY, f64::max);
         let low = target.lows.iter().copied().fold(f64::INFINITY, f64::min);
 
-        let raw_return = if open.abs() > 1e-12 {
-            (close - open) / open
-        } else {
-            0.0
-        };
-
-        let direction = (raw_return * 10.0).tanh().clamp(-1.0, 1.0);
-        let strength = (raw_return.abs() * 10.0).tanh().clamp(0.0, 1.0);
-
         let range = (high - low).max(0.0);
         let normalized_range = if open.abs() > 1e-12 {
             range / open
@@ -92,17 +107,21 @@ impl Evaluator {
             0.0
         };
 
-        let volatility = ((normalized_range - 0.03) * 30.0).tanh().clamp(-1.0, 1.0);
+        let volatility = (normalized_range * 8.0).tanh().clamp(-1.0, 1.0);
 
         let mut body_sum = 0.0;
+        let mut range_sum = 0.0;
         let mut valid = 0usize;
 
         for i in 0..len {
             let o = target.opens[i];
+            let h = target.highs[i];
+            let l = target.lows[i];
             let c = target.closes[i];
 
-            if o.is_finite() && c.is_finite() {
+            if o.is_finite() && h.is_finite() && l.is_finite() && c.is_finite() {
                 body_sum += (c - o).abs();
+                range_sum += (h - l).max(0.0);
                 valid += 1;
             }
         }
@@ -112,7 +131,12 @@ impl Evaluator {
         } else {
             0.0
         };
-        let avg_range = if len > 0 { range / len as f64 } else { 1e-12 };
+
+        let avg_range = if valid > 0 {
+            range_sum / valid as f64
+        } else {
+            0.0
+        };
 
         let body_ratio = if avg_range > 1e-12 {
             avg_body / avg_range
@@ -120,13 +144,13 @@ impl Evaluator {
             0.0
         };
 
-        let quality = (body_ratio * 2.0 - 1.0).clamp(-1.0, 1.0);
+        let quality = (1.0 - body_ratio).tanh().clamp(-1.0, 1.0);
 
         let signal = direction * strength;
 
-        let final_score = if signal > 0.25 {
+        let final_score = if signal > TARGET_DEAD_ZONE {
             FinalScore::Long
-        } else if signal < -0.25 {
+        } else if signal < -TARGET_DEAD_ZONE {
             FinalScore::Short
         } else {
             FinalScore::Neutral
@@ -153,28 +177,23 @@ impl Evaluator {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ScoreLoss {
-    /// Signed directional alignment loss.
-    ///
+    /// Signed directional distance loss.
     /// [0, 1]
     pub direction: f64,
 
     /// Structural similarity loss.
-    ///
     /// [0, 1]
     pub quality: f64,
 
     /// Magnitude mismatch loss.
-    ///
     /// [0, 1]
     pub strength: f64,
 
     /// Regime mismatch loss.
-    ///
     /// [0, 1]
     pub volatility: f64,
 
     /// Final classification mismatch.
-    ///
     /// [0, 1]
     pub signal: f64,
 }
@@ -182,13 +201,9 @@ pub struct ScoreLoss {
 impl ScoreLoss {
     pub fn new(predict: ScoreResult, target: ScoreResult) -> Self {
         let direction = Self::signed_loss(predict.direction, target.direction);
-
         let quality = Self::signed_loss(predict.quality, target.quality);
-
         let strength = Self::unsigned_loss(predict.strength, target.strength);
-
         let volatility = Self::signed_loss(predict.volatility, target.volatility);
-
         let signal = Self::signal_loss(predict.final_score, target.final_score);
 
         Self {
@@ -200,7 +215,7 @@ impl ScoreLoss {
         }
     }
 
-    /// Signed alignment loss.
+    /// Signed distance loss.
     ///
     /// Input:
     /// [-1, 1]
@@ -208,9 +223,8 @@ impl ScoreLoss {
     /// Output:
     /// [0, 1]
     ///
-    /// 0.0 = perfect alignment
-    ///
-    /// 1.0 = complete opposition
+    /// 0.0 = perfect match
+    /// 1.0 = opposite extremes
     fn signed_loss(pred: f64, target: f64) -> f64 {
         if !pred.is_finite() || !target.is_finite() {
             return 1.0;
@@ -219,7 +233,7 @@ impl ScoreLoss {
         let pred = pred.clamp(-1.0, 1.0);
         let target = target.clamp(-1.0, 1.0);
 
-        ((1.0 - pred * target) / 2.0).clamp(0.0, 1.0)
+        ((pred - target).abs() / 2.0).clamp(0.0, 1.0)
     }
 
     /// Unsigned magnitude loss.
@@ -297,6 +311,16 @@ impl ScoreLoss {
 
 #[derive(Debug, Clone, Default)]
 pub struct AccuracyReport {
+    pub total: usize,
+
+    pub target_long: usize,
+    pub target_short: usize,
+    pub target_neutral: usize,
+
+    pub predicted_long: usize,
+    pub predicted_short: usize,
+    pub predicted_neutral: usize,
+
     pub true_long: usize,
     pub false_long: usize,
     pub true_short: usize,
@@ -304,17 +328,27 @@ pub struct AccuracyReport {
     pub true_neutral: usize,
     pub false_neutral: usize,
 
+    /// Precision by predicted class.
     pub long_accuracy: f64,
     pub short_accuracy: f64,
     pub neutral_accuracy: f64,
 
+    pub long_precision: f64,
+    pub long_recall: f64,
+    pub short_precision: f64,
+    pub short_recall: f64,
+    pub neutral_precision: f64,
+    pub neutral_recall: f64,
+
+    /// Recall on directional targets.
     pub directional_accuracy: f64,
 
+    /// Precision on predicted trades.
     pub trade_accuracy: f64,
 
+    /// % of samples that resulted in a trade.
     pub trade_coverage: f64,
 
-    pub total: usize,
     pub predicted_trades: usize,
 }
 
@@ -325,77 +359,89 @@ impl AccuracyReport {
         for (pred, target) in predictions {
             report.total += 1;
 
-            let p = pred.final_score;
-            let t = target.final_score;
-
-            let pred_is_trade = matches!(p, FinalScore::Long | FinalScore::Short);
-
-            if pred_is_trade {
-                report.predicted_trades += 1;
+            match target.final_score {
+                FinalScore::Long => report.target_long += 1,
+                FinalScore::Short => report.target_short += 1,
+                FinalScore::Neutral => report.target_neutral += 1,
             }
 
-            match (p, t) {
-                // ---------- LONG ----------
-                (FinalScore::Long, FinalScore::Long) => {
-                    report.true_long += 1;
-                }
+            match pred.final_score {
+                FinalScore::Long => report.predicted_long += 1,
+                FinalScore::Short => report.predicted_short += 1,
+                FinalScore::Neutral => report.predicted_neutral += 1,
+            }
 
-                (FinalScore::Long, _) => {
-                    report.false_long += 1;
-                }
+            match (pred.final_score, target.final_score) {
+                (FinalScore::Long, FinalScore::Long) => report.true_long += 1,
+                (FinalScore::Long, _) => report.false_long += 1,
 
-                // ---------- SHORT ----------
-                (FinalScore::Short, FinalScore::Short) => {
-                    report.true_short += 1;
-                }
+                (FinalScore::Short, FinalScore::Short) => report.true_short += 1,
+                (FinalScore::Short, _) => report.false_short += 1,
 
-                (FinalScore::Short, _) => {
-                    report.false_short += 1;
-                }
-
-                // ---------- NEUTRAL ----------
-                (FinalScore::Neutral, FinalScore::Neutral) => {
-                    report.true_neutral += 1;
-                }
-
-                (FinalScore::Neutral, _) => {
-                    report.false_neutral += 1;
-                }
+                (FinalScore::Neutral, FinalScore::Neutral) => report.true_neutral += 1,
+                (FinalScore::Neutral, _) => report.false_neutral += 1,
             }
         }
 
-        report.long_accuracy = math::ratio(report.true_long, report.true_long + report.false_long);
+        report.predicted_trades = report.predicted_long + report.predicted_short;
 
-        report.short_accuracy =
-            math::ratio(report.true_short, report.true_short + report.false_short);
+        report.long_precision = Self::ratio(report.true_long, report.predicted_long);
+        report.long_recall = Self::ratio(report.true_long, report.target_long);
 
-        report.neutral_accuracy = math::ratio(
-            report.true_neutral,
-            report.true_neutral + report.false_neutral,
-        );
+        report.short_precision = Self::ratio(report.true_short, report.predicted_short);
+        report.short_recall = Self::ratio(report.true_short, report.target_short);
+
+        report.neutral_precision = Self::ratio(report.true_neutral, report.predicted_neutral);
+        report.neutral_recall = Self::ratio(report.true_neutral, report.target_neutral);
+
+        // Backward-compatible aliases.
+        report.long_accuracy = report.long_precision;
+        report.short_accuracy = report.short_precision;
+        report.neutral_accuracy = report.neutral_precision;
 
         let correct_directional = report.true_long + report.true_short;
+        let target_directional = report.target_long + report.target_short;
+        let predicted_directional = report.predicted_long + report.predicted_short;
 
-        let total_directional =
-            report.true_long + report.false_long + report.true_short + report.false_short;
-
-        report.directional_accuracy = math::ratio(correct_directional, total_directional);
-
-        report.trade_accuracy = math::ratio(correct_directional, report.predicted_trades);
-        report.trade_coverage = math::ratio(report.predicted_trades, report.total);
+        report.directional_accuracy = Self::ratio(correct_directional, target_directional);
+        report.trade_accuracy = Self::ratio(correct_directional, predicted_directional);
+        report.trade_coverage = Self::ratio(predicted_directional, report.total);
 
         report
     }
 
+    fn ratio(num: usize, den: usize) -> f64 {
+        if den == 0 {
+            0.0
+        } else {
+            num as f64 / den as f64
+        }
+    }
+
     pub fn print(&self) {
-        tracing::info!("LONG: {}", round_to_two_decimals(self.long_accuracy));
-        tracing::info!("SHORT: {}", round_to_two_decimals(self.short_accuracy));
-        tracing::info!("NEUTRAL: {}", round_to_two_decimals(self.neutral_accuracy));
         tracing::info!(
-            "DIRECTIONAL: {}",
+            "LONG: precision {} || recall {}",
+            round_to_two_decimals(self.long_precision),
+            round_to_two_decimals(self.long_recall)
+        );
+        tracing::info!(
+            "SHORT: precision {} || recall {}",
+            round_to_two_decimals(self.short_precision),
+            round_to_two_decimals(self.short_recall)
+        );
+        tracing::info!(
+            "NEUTRAL: precision {} || recall {}",
+            round_to_two_decimals(self.neutral_precision),
+            round_to_two_decimals(self.neutral_recall)
+        );
+        tracing::info!(
+            "DIRECTIONAL RECALL: {}",
             round_to_two_decimals(self.directional_accuracy)
         );
-        tracing::info!("TRADE: {}", round_to_two_decimals(self.trade_accuracy));
+        tracing::info!(
+            "TRADE PRECISION: {}",
+            round_to_two_decimals(self.trade_accuracy)
+        );
         tracing::info!(
             "TRADE COVERAGE: {}",
             round_to_two_decimals(self.trade_coverage)
