@@ -3,8 +3,8 @@ pub fn z_score(values: &[f64]) -> Vec<f64> {
         return vec![];
     }
 
-    let mean = mean(&values);
-    let std = std_dev(&values, mean);
+    let mean = mean(values);
+    let std = std_dev(values, mean);
 
     if std == 0.0 {
         return vec![0.0; values.len()];

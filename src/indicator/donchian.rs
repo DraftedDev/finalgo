@@ -106,7 +106,7 @@ impl<const PERIOD: usize> Indicator for DonchianPosition<PERIOD> {
             for i in 0..len {
                 let v = self.position[i];
 
-                self.position_z[i] = if v.is_finite() && z.len() > 0 {
+                self.position_z[i] = if v.is_finite() && !z.is_empty() {
                     z.get(i).copied().unwrap_or(0.0)
                 } else {
                     0.0
