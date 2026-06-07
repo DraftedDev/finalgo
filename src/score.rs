@@ -53,8 +53,8 @@ impl Score {
         let signal = Self::final_signal(direction, strength, quality, volatility);
 
         let final_score = match signal {
-            v if v >= 0.25 => FinalScore::Long,
-            v if v <= -0.25 => FinalScore::Short,
+            v if v >= 0.15 => FinalScore::Long,
+            v if v <= -0.15 => FinalScore::Short,
             _ => FinalScore::Neutral,
         };
 
@@ -169,13 +169,13 @@ impl Score {
     /// - Quality validates signal reliability.
     /// - Volatility dampens unstable regimes.
     fn final_signal(direction: f64, strength: f64, quality: f64, volatility: f64) -> f64 {
-        let volatility_penalty = 1.0 - ((volatility + 1.0) / 2.0);
-
         let quality_factor = ((quality + 1.0) / 2.0).clamp(0.0, 1.0);
+        let volatility_factor = 1.0 - ((volatility + 1.0) / 2.0);
 
-        let conviction = strength * 0.45 + quality_factor * 0.35 + volatility_penalty * 0.20;
+        let amplification =
+            0.7 + strength * 0.45 + quality_factor * 0.35 + volatility_factor * 0.20;
 
-        let signal = direction * conviction;
+        let signal = direction * amplification;
 
         signal.clamp(-1.0, 1.0)
     }

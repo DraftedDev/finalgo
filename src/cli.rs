@@ -2,7 +2,6 @@ use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_CANDLE_LOOK_BACK}
 use crate::data::{DataKey, StockData};
 use crate::database::Database;
 use crate::eval::{Evaluator, ScoreLoss};
-use crate::utils::round_to_two_decimals;
 use crate::{interface, utils};
 use clap::Parser;
 use tokio::task::JoinSet;
@@ -106,33 +105,14 @@ impl Cli {
 
         tracing::info!("Evaluating...");
 
-        let losses = eval.eval().await;
-        let aggregate = ScoreLoss::aggregate(&losses);
+        let (losses, report) = eval.eval().await;
+        let loss = ScoreLoss::aggregate(&losses);
 
-        tracing::info!("[####################]");
+        tracing::info!("[############ LOSS ############]");
+        loss.print();
 
-        tracing::info!(
-            "DIRECTION  || {}",
-            round_to_two_decimals(aggregate.direction),
-        );
-
-        tracing::info!("QUALITY    || {}", round_to_two_decimals(aggregate.quality));
-
-        tracing::info!(
-            "STRENGTH   || {}",
-            round_to_two_decimals(aggregate.strength),
-        );
-
-        tracing::info!(
-            "VOLATILITY || {}",
-            round_to_two_decimals(aggregate.volatility),
-        );
-
-        tracing::info!("FINAL      || {}", round_to_two_decimals(aggregate.signal));
-
-        tracing::info!("TOTAL      || {}", round_to_two_decimals(aggregate.total()));
-
-        tracing::info!("[####################]");
+        tracing::info!("[########## ACCURACY ##########]");
+        report.print();
     }
 }
 

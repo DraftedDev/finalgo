@@ -1,7 +1,9 @@
 use crate::data::StockData;
 use crate::interface::Interface;
 use crate::score::{FinalScore, ScoreResult};
-use crate::{interface, utils};
+use crate::utils::round_to_two_decimals;
+use crate::{interface, math, utils};
+use std::fmt::Debug;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Evaluates prediction quality against future realized candles.
@@ -25,19 +27,27 @@ impl Evaluator {
         self.data.push((interface::build(predict), target));
     }
 
-    pub async fn eval(&mut self) -> Vec<ScoreLoss> {
+    pub async fn eval(&mut self) -> (Vec<ScoreLoss>, AccuracyReport) {
         utils::with_progress("Evaluating", self.data.len() as u64, |span| async move {
             let mut losses = Vec::with_capacity(self.data.len());
 
+            let mut predictions = Vec::with_capacity(self.data.len());
+
             for (int, target_data) in &mut self.data {
                 let predict = int.run(false);
+
                 let target = Self::build_target_result(target_data);
+
                 span.pb_inc(1);
 
-                losses.push(ScoreLoss::new(predict, target));
+                losses.push(ScoreLoss::new(predict.clone(), target.clone()));
+
+                predictions.push((predict, target));
             }
 
-            losses
+            let report = AccuracyReport::compute(&predictions);
+
+            (losses, report)
         })
         .await
     }
@@ -248,15 +258,6 @@ impl ScoreLoss {
         }
     }
 
-    pub fn total(&self) -> f64 {
-        (self.direction * 0.35
-            + self.strength * 0.20
-            + self.quality * 0.15
-            + self.volatility * 0.10
-            + self.signal * 0.20)
-            .clamp(0.0, 1.0)
-    }
-
     pub fn aggregate(losses: &[ScoreLoss]) -> Self {
         assert!(!losses.is_empty(), "Losses must not be empty");
 
@@ -283,5 +284,123 @@ impl ScoreLoss {
             volatility: volatility / n,
             signal: signal / n,
         }
+    }
+
+    pub fn print(&self) {
+        tracing::info!("DIRECTION: {}", round_to_two_decimals(self.direction));
+        tracing::info!("QUALITY: {}", round_to_two_decimals(self.quality));
+        tracing::info!("STRENGTH: {}", round_to_two_decimals(self.strength));
+        tracing::info!("VOLATILITY: {}", round_to_two_decimals(self.volatility));
+        tracing::info!("SIGNAL: {}", round_to_two_decimals(self.signal));
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AccuracyReport {
+    pub true_long: usize,
+    pub false_long: usize,
+    pub true_short: usize,
+    pub false_short: usize,
+    pub true_neutral: usize,
+    pub false_neutral: usize,
+
+    pub long_accuracy: f64,
+    pub short_accuracy: f64,
+    pub neutral_accuracy: f64,
+
+    pub directional_accuracy: f64,
+
+    pub trade_accuracy: f64,
+
+    pub trade_coverage: f64,
+
+    pub total: usize,
+    pub predicted_trades: usize,
+}
+
+impl AccuracyReport {
+    pub fn compute(predictions: &[(ScoreResult, ScoreResult)]) -> Self {
+        let mut report = Self::default();
+
+        for (pred, target) in predictions {
+            report.total += 1;
+
+            let p = pred.final_score;
+            let t = target.final_score;
+
+            let pred_is_trade = matches!(p, FinalScore::Long | FinalScore::Short);
+
+            if pred_is_trade {
+                report.predicted_trades += 1;
+            }
+
+            match (p, t) {
+                // ---------- LONG ----------
+                (FinalScore::Long, FinalScore::Long) => {
+                    report.true_long += 1;
+                }
+
+                (FinalScore::Long, _) => {
+                    report.false_long += 1;
+                }
+
+                // ---------- SHORT ----------
+                (FinalScore::Short, FinalScore::Short) => {
+                    report.true_short += 1;
+                }
+
+                (FinalScore::Short, _) => {
+                    report.false_short += 1;
+                }
+
+                // ---------- NEUTRAL ----------
+                (FinalScore::Neutral, FinalScore::Neutral) => {
+                    report.true_neutral += 1;
+                }
+
+                (FinalScore::Neutral, _) => {
+                    report.false_neutral += 1;
+                }
+            }
+        }
+
+        report.long_accuracy = math::ratio(report.true_long, report.true_long + report.false_long);
+
+        report.short_accuracy =
+            math::ratio(report.true_short, report.true_short + report.false_short);
+
+        report.neutral_accuracy = math::ratio(
+            report.true_neutral,
+            report.true_neutral + report.false_neutral,
+        );
+
+        let correct_directional = report.true_long + report.true_short;
+
+        let total_directional =
+            report.true_long + report.false_long + report.true_short + report.false_short;
+
+        report.directional_accuracy = math::ratio(correct_directional, total_directional);
+
+        report.trade_accuracy = math::ratio(correct_directional, report.predicted_trades);
+        report.trade_coverage = math::ratio(report.predicted_trades, report.total);
+
+        report
+    }
+
+    pub fn print(&self) {
+        tracing::info!("LONG: {}", round_to_two_decimals(self.long_accuracy));
+        tracing::info!("SHORT: {}", round_to_two_decimals(self.short_accuracy));
+        tracing::info!("NEUTRAL: {}", round_to_two_decimals(self.neutral_accuracy));
+        tracing::info!(
+            "DIRECTIONAL: {}",
+            round_to_two_decimals(self.directional_accuracy)
+        );
+        tracing::info!("TRADE: {}", round_to_two_decimals(self.trade_accuracy));
+        tracing::info!(
+            "TRADE COVERAGE: {}",
+            round_to_two_decimals(self.trade_coverage)
+        );
+        tracing::info!("TOTAL: {}", self.total);
+        tracing::info!("PREDICTED TRADES: {}", self.predicted_trades);
     }
 }
