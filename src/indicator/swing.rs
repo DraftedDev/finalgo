@@ -3,20 +3,6 @@ use crate::interface::Interface;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Swing Structure Indicator
-///
-/// ## Purpose
-/// - Market structure detection (HH/HL vs LH/LL)
-/// - Break of structure (BOS) identification
-/// - Trend regime classification (trend vs chop)
-/// - Impulse vs corrective phase detection
-///
-/// ## Math
-///
-/// ```
-/// swing_high(i) = high[i] is local maximum within window
-/// swing_low(i)  = low[i] is local minimum within window
-/// ```
 pub struct SwingStructure<const WINDOW: usize> {
     swing_highs: Vec<Option<f64>>,
     swing_lows: Vec<Option<f64>>,

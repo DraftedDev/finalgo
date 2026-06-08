@@ -4,23 +4,6 @@ use crate::math::z_score;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Donchian Channel Position Indicator
-///
-/// ## Purpose
-/// - Price location in recent range
-/// - Breakout / breakdown detection
-/// - Mean reversion context
-///
-/// ## Math
-///
-/// Donchian:
-/// ```
-/// upper = max(high[t-N..t])
-/// lower = min(low[t-N..t])
-///
-/// POS_t = (close_t - lower) / (upper - lower)
-/// POS_z = z_score(POS)
-/// ```
 pub struct DonchianPosition<const PERIOD: usize> {
     pub position: Vec<f64>,
     pub position_z: Vec<f64>,

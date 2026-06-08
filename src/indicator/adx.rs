@@ -3,34 +3,6 @@ use crate::interface::Interface;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Average Directional Movement Index (ADX)
-///
-/// ## Purpose
-/// - Detect whether the market is trending or choppy
-/// - Measure trend persistence
-/// - Provide directional pressure from +DI / -DI separation
-///
-/// ## Math
-///
-/// ```
-/// up_move   = high[t] - high[t - 1]
-/// down_move = low[t - 1] - low[t]
-///
-/// +DM = up_move   if up_move > down_move && up_move > 0, otherwise 0
-/// -DM = down_move if down_move > up_move && down_move > 0, otherwise 0
-///
-/// TR = max(
-///     high[t] - low[t],
-///     |high[t] - close[t - 1]|,
-///     |low[t] - close[t - 1]|
-/// )
-///
-/// smoothed_t = smoothed_{t-1} - (smoothed_{t-1} / period) + current_value
-/// +DI = 100 * smoothed(+DM) / smoothed(TR)
-/// -DI = 100 * smoothed(-DM) / smoothed(TR)
-///
-/// ADX = 100 * |+DI - -DI| / (+DI + -DI)
-/// ```
 pub struct AvgDirMovIdx<const PERIOD: usize> {
     pub adx: Vec<f64>,
     pub plus_di: Vec<f64>,

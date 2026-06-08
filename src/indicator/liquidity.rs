@@ -3,43 +3,6 @@ use crate::interface::Interface;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Liquidity Sweep / Stop Hunt Detector
-///
-/// ## Purpose
-/// - Detect stop-loss hunting above/below key swing levels
-/// - Identify false breakouts (sweeps with rejection)
-/// - Capture reversal-driven liquidity grabs
-/// - Improve directional precision in breakout regimes
-///
-/// ## Math
-///
-/// ### Swing levels (rolling liquidity reference)
-///
-/// ```text
-/// swing_high_t = max(high_{t-N ... t-1})
-/// swing_low_t  = min(low_{t-N ... t-1})
-///
-/// sweep_up_t = high_t > swing_high_t
-/// sweep_down_t = low_t < swing_low_t
-/// extension_up_t = (high_t - swing_high_t) / swing_high_t
-///
-/// extension_down_t = (swing_low_t - low_t) / swing_low_t
-/// rejection_up_t = (swing_high_t - close_t) / swing_high_t
-/// rejection_down_t = (close_t - swing_low_t) / swing_low_t
-///
-/// signal_t = -1
-/// strength_t = clamp(extension_up_t, 0, 1)
-///
-/// signal_t = +1
-/// strength_t = clamp(extension_down_t, 0, 1)
-///
-/// signal_t = 0
-/// strength_t = 0
-///
-/// quality_t = clamp(2 * rejection_t - 0.5, -1, 1)
-///
-/// rejection_t = rejection_up_t OR rejection_down_t
-/// ```
 pub struct LiquiditySweep<const LOOKBACK: usize> {
     sweep_signal: Vec<f64>,
     sweep_strength: Vec<f64>,

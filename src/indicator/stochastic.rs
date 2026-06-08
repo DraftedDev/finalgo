@@ -4,18 +4,6 @@ use crate::math::mean;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Stochastic Oscillator Indicator
-///
-/// ## Purpose
-/// - Position within range
-/// - Overbought / oversold pressure
-/// - Exhaustion detection
-///
-/// ## Math
-/// ```
-/// %K = (close - low_n) / (high_n - low_n)
-/// %D = SMA(%K)
-/// ```
 pub struct Stochastic<const PERIOD: usize, const SMOOTH: usize> {
     pub k: Vec<f64>,
     pub d: Vec<f64>,

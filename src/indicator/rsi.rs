@@ -3,24 +3,6 @@ use crate::interface::Interface;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Relative Strength Index (RSI)
-///
-/// ## Purpose
-/// - Momentum + mean reversion pressure
-/// - Overbought / oversold detection (used structurally, not literally)
-///
-/// ## Math
-/// ```
-/// gain = max(Δclose, 0)
-/// loss = max(-Δclose, 0)
-///
-/// avg_gain = WilderSMA(gain, period)
-/// avg_loss = WilderSMA(loss, period)
-///
-/// RS = avg_gain / avg_loss
-/// RSI = 100 - (100 / (1 + RS))
-/// RSI_slope = RSI_t - RSI_{t-1}
-/// ```
 pub struct RelStrengthIdx<const PERIOD: usize> {
     pub rsi: Vec<f64>,
     pub rsi_slope: Vec<f64>,

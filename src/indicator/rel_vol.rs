@@ -4,18 +4,6 @@ use crate::math::mean;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Relative Volume Indicator
-///
-/// ## Purpose
-/// - Participation Strength
-/// - Breakout Confirmation
-///
-/// ## Math
-/// ```text
-/// RVOL_t = volume_t / mean(volume_{t-PERIOD...t})
-/// RVOL_smooth = EMA(RVOL, α)
-/// RVOL_z = z_score(RVOL)
-/// ```
 pub struct RelativeVolume<const PERIOD: usize> {
     pub vol: Vec<f64>,
     pub vol_smoothed: Vec<f64>,

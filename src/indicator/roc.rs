@@ -4,18 +4,6 @@ use crate::math::z_score;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Rate of Change Indicator
-///
-/// ## Purpose
-/// - Momentum
-/// - Price Acceleration
-///
-/// ## Math
-/// ```
-/// ROC_t = (close_t - close_{t-n}) / close_{t-n}
-/// ROC_ABS = |ROC|
-/// ROC_Z = z_score(ROC)
-/// ```
 pub struct RateOfChange<const PERIOD: usize> {
     pub roc: Vec<f64>,
     pub roc_abs: Vec<f64>,

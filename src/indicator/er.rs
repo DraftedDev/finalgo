@@ -3,18 +3,6 @@ use crate::interface::Interface;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Efficiency Ratio Indicator
-///
-/// ## Purpose
-/// - Trend Quality vs Noise
-///
-/// ## Math
-/// ```
-/// ER_t = |close_t - close_{t-n}| / Σ |close_i - close_{i-1}|
-/// ER_smooth_t = α · ER_t + (1 - α) · ER_smooth_{t-1}
-/// ER_slope_t = ER_smooth_t - ER_smooth_{t-1}
-/// ER_accel_t = ER_slope_t - ER_slope_{t-1}
-/// ```
 pub struct EfficiencyRatio<const PERIOD: usize> {
     pub er: Vec<f64>,
     pub smoothed: Vec<f64>,

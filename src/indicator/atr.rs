@@ -4,26 +4,6 @@ use crate::math::z_score;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Average True Range Indicator
-///
-/// ## Purpose
-/// - Volatility
-/// - Risk regime
-///
-/// ## Math
-///
-/// ```
-/// TR = max(
-///     high - low,
-///     |high - prev_close|,
-///     |low - prev_close|
-/// );
-///
-/// α = 2 / (period + 1)
-///
-/// ATR_t = α * TR_t + (1 - α) * ATR_{t-1}
-/// ATR_Z_t = z_score(ATR_t)
-/// ```
 pub struct AvgTrueRange<const PERIOD: usize> {
     pub atr: Vec<f64>,
     pub atr_z: Vec<f64>,

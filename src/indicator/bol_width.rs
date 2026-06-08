@@ -6,25 +6,6 @@ use std::any::Any;
 
 const STD_MULTI: f64 = 2.0;
 
-/// # Bollinger Band Width Indicator
-///
-/// ## Purpose
-/// - Detect relative volatility compression/expansion.
-/// - Identify squeeze and breakout environments.
-/// - Measure volatility regime changes.
-///
-/// ## Math
-///
-/// ```
-/// mean = SMA(window)
-/// std = standard_deviation(window)
-///
-/// upper = mean + k * std
-/// lower = mean - k * std
-///
-/// BOLL_W = (upper - lower) / mean
-/// BOLL_W_MIN_MAX = rolling min-max normalization
-/// ```
 pub struct BollingerWidth<const PERIOD: usize> {
     pub width: Vec<f64>,
     pub min_max: Vec<f64>,

@@ -5,21 +5,6 @@ use crate::math::norm_atr;
 use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-/// # Exponential Moving Average Indicator.
-///
-/// ## Purpose
-/// - Smooth price trend
-/// - Measure directional bias
-///
-/// ## Math
-///
-/// ```
-/// α = 2 / (period + 1)
-///
-/// EMA_t = α * price_t + (1 - α) * EMA_{t-1}
-/// EMA_DIST_t = norm_atr(price_t - EMA_t)
-/// EMA_SLOPE_t = norm_atr_14(EMA_t - EMA_{t-1})
-/// ```
 pub struct ExpMovAvg<const PERIOD: usize> {
     pub ema: Vec<f64>,
     pub distance: Vec<f64>,
