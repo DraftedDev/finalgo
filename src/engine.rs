@@ -9,6 +9,7 @@ use crate::indicator::rvol::RelativeVolume;
 use crate::indicator::swing::SwingStructure;
 use crate::regime::Regime;
 use crate::score::Score;
+use crate::score::final_score::FinalScore;
 use crate::score::participation::ParticipationScore;
 use crate::score::quality::QualityScore;
 use crate::score::strength::StrengthScore;
@@ -20,16 +21,14 @@ use std::any::TypeId;
 pub fn build() -> Engine {
     let mut engine = Engine::new();
 
-    engine.add_indicator(ExpMovAvg::<20>::new());
-    engine.add_indicator(ExpMovAvg::<600>::new());
-    engine.add_indicator(RateOfChange::<10>::new());
-    engine.add_indicator(EfficiencyRatio::<10, 3>::new());
-    engine.add_indicator(SwingStructure::<10, 10>::new());
-    engine.add_indicator(SwingStructure::<5, 10>::new());
-    engine.add_indicator(SwingStructure::<5, 5>::new());
     engine.add_indicator(AvgTrueRange::<14>::new());
     engine.add_indicator(BollingerBands::<20, 2>::new());
     engine.add_indicator(BollingerBands::<30, 2>::new());
+    engine.add_indicator(ExpMovAvg::<600>::new());
+    engine.add_indicator(RateOfChange::<10>::new());
+    engine.add_indicator(EfficiencyRatio::<10, 3>::new());
+    engine.add_indicator(SwingStructure::<5, 10>::new());
+    engine.add_indicator(SwingStructure::<10, 10>::new());
     engine.add_indicator(RelativeVolume::<20>::new());
 
     engine.add_score(TrendScore::new());
@@ -37,6 +36,7 @@ pub fn build() -> Engine {
     engine.add_score(QualityScore::new());
     engine.add_score(VolatilityScore::new());
     engine.add_score(ParticipationScore::new());
+    engine.add_score(FinalScore::new());
 
     engine
 }

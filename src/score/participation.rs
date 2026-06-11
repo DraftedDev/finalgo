@@ -7,13 +7,34 @@ use std::any::Any;
 
 /// # Participation Score
 ///
-/// A score representing the market participation of a stock.
+/// A regime-aware market participation score.
 ///
 /// Requires:
 /// - `RelativeVolume<20>`
 pub struct ParticipationScore {
+    /// Final participation score.
+    ///
+    /// Represents overall market activity strength.
+    ///
+    /// Range:
+    /// - `0.0` -> extremely inactive / low participation market
+    /// - `0.5` -> normal participation environment
+    /// - `1.0` -> highly active / high participation market
     pub participation: f64,
+
+    /// Confidence in the participation estimate.
+    ///
+    /// Measures how reliable the participation signal is.
+    ///
+    /// Range:
+    /// - `0.0` -> weak or unclear participation signal
+    /// - `1.0` -> strong, well-confirmed participation conditions
+    ///
+    /// High confidence usually indicates:
+    /// - clear volume expansion or contraction
+    /// - agreement between volume and regime structure
     pub confidence: f64,
+
     computed: bool,
 }
 

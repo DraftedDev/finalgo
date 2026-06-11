@@ -14,8 +14,22 @@ use std::any::Any;
 /// - `AvgTrueRange<14>`
 /// - `BollingerBands<20, 2>`
 pub struct VolatilityScore {
+    /// Normalized volatility score.
+    ///
+    /// Range:
+    /// - 0.0 -> extremely quiet / compressed market
+    /// - 0.5 -> normal volatility conditions
+    /// - 1.0 -> highly volatile / explosive market conditions
     pub volatility: f64,
+
+    /// Confidence in the volatility estimate.
+    ///
+    /// Range:
+    /// - 1.0 -> all volatility measures agree strongly
+    /// - 0.5 -> moderate disagreement between signals
+    /// - 0.0 -> conflicting or unstable volatility signals
     pub confidence: f64,
+
     computed: bool,
 }
 

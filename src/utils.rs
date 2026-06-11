@@ -2,7 +2,6 @@ use crate::utils;
 use indicatif::ProgressStyle;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::hash::Hash;
 use std::sync::LazyLock;
 use time::format_description::BorrowedFormatItem;
 use time::macros::format_description;
@@ -156,7 +155,15 @@ impl ValueMap {
 
 impl Display for ValueMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (key, value) in &self.fields {
+        let mut fields = self
+            .fields
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<_>>();
+
+        fields.sort_by(|(a, _), (b, _)| a.to_lowercase().cmp(&b.to_lowercase()));
+
+        for (key, value) in fields {
             writeln!(f, "\t{key} : [ {value} ]")?;
         }
 
@@ -189,7 +196,7 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Num(n) => write!(f, "{}", utils::round_to_two_decimals(*n)),
+            Value::Num(n) => write!(f, "{}", round_to_two_decimals(*n)),
             Value::String(s) => write!(f, "{}", s),
         }
     }

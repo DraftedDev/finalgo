@@ -18,8 +18,24 @@ use std::any::Any;
 /// - `RateOfChange<10>`
 /// - `EfficiencyRatio<10, 3>`
 pub struct TrendScore {
+    /// Final directional trend estimate.
+    ///
+    /// Represents the aggregated market bias:
+    ///
+    /// - `+1.0` -> strong bullish trend
+    /// - `0.0`  -> neutral / no clear trend
+    /// - `-1.0` -> strong bearish trend
     pub direction: f64,
+
+    /// Confidence in the trend estimate.
+    ///
+    /// Represents how reliable the directional signal is.
+    ///
+    /// Range:
+    /// - `0.0` -> no confidence (noisy / conflicting signals)
+    /// - `1.0` -> high confidence (strong alignment across indicators)
     pub confidence: f64,
+
     computed: bool,
 }
 

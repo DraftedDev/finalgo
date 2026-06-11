@@ -2,6 +2,7 @@ use crate::engine::Context;
 use crate::utils::ValueMap;
 use std::any::Any;
 
+pub mod final_score;
 pub mod participation;
 pub mod quality;
 pub mod strength;

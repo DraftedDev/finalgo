@@ -3,15 +3,31 @@ use crate::score::Score;
 use crate::utils::ValueMap;
 use std::any::Any;
 
-/// # Strength Score
+/// # Quality Score
 ///
 /// Measures how clean, stable, and structurally aligned the market is.
 ///
 /// Requires no indicators.
 pub struct QualityScore {
+    /// Final computed market quality score.
+    ///
+    /// Represents how "tradable" the current market is.
+    ///
+    /// Range:
+    /// - 0.0 -> noisy, unstable, low-quality market
+    /// - 1.0 -> clean, structured, high-quality market
     pub quality: f64,
+
+    /// Confidence in the quality estimate.
+    ///
+    /// Used to down-weight trades when market conditions are uncertain.
+    ///
+    /// Range:
+    /// - 0.0 -> unreliable regime interpretation
+    /// - 1.0 -> highly reliable market structure
     pub confidence: f64,
-    computed: bool,
+
+    pub computed: bool,
 }
 
 impl QualityScore {

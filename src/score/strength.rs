@@ -1,24 +1,38 @@
 use crate::engine::Context;
-use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::ema::ExpMovAvg;
+use crate::indicator::er::EfficiencyRatio;
 use crate::indicator::roc::RateOfChange;
 use crate::indicator::swing::SwingStructure;
+use crate::math;
 use crate::score::Score;
+use crate::score::trend::TrendScore;
 use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Strength Score
 ///
-/// A score representing the future trend strength of a stock.
+/// Represents how strong the current trend is, regardless of direction.
 ///
 /// Requires:
-/// - `AvgTrueRange<14>`
-/// - `ExpMovAvg<20>`
+/// - `ExpMovAvg<600>`
+/// - `SwingStructure<5, 10>`
 /// - `RateOfChange<10>`
-/// - `SwingStructure<5, 5>`
+/// - `EfficiencyRatio<10, 3>`
 pub struct StrengthScore {
+    /// Strength of the current trend.
+    ///
+    /// Range:
+    /// - 0.0 -> no meaningful trend / weak or choppy movement
+    /// - 1.0 -> very strong, sustained directional trend
     pub strength: f64,
+
+    /// Confidence in the strength estimate.
+    ///
+    /// Range:
+    /// - 0.0 -> unreliable / conflicting signals
+    /// - 1.0 -> highly consistent and trustworthy trend conditions
     pub confidence: f64,
+
     computed: bool,
 }
 
@@ -33,6 +47,14 @@ impl StrengthScore {
             computed: false,
         }
     }
+    #[inline]
+    fn normalize_ratio(x: f64, scale: f64) -> f64 {
+        if !x.is_finite() || !scale.is_finite() || scale.abs() <= 1e-12 {
+            return 0.0;
+        }
+
+        (x.abs() * scale).tanh().clamp(0.0, 1.0)
+    }
 }
 
 impl Score for StrengthScore {
@@ -41,60 +63,62 @@ impl Score for StrengthScore {
     }
 
     fn compute(&mut self, ctx: Context) -> ValueMap {
+        let trend = ctx.score::<TrendScore>();
         let regime = ctx.regime();
 
-        let atr = ctx.indicator::<AvgTrueRange<14>>();
-        let ema = ctx.indicator::<ExpMovAvg<20>>();
+        let ema = ctx.indicator::<ExpMovAvg<600>>();
+        let swing = ctx.indicator::<SwingStructure<5, 10>>();
         let roc = ctx.indicator::<RateOfChange<10>>();
-        let swing = ctx.indicator::<SwingStructure<5, 5>>();
+        let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
 
-        let len = atr.atr.len().min(ema.distance.len());
+        let close = ctx
+            .data()
+            .closes
+            .last()
+            .copied()
+            .unwrap_or(0.0)
+            .abs()
+            .max(1e-12);
 
-        // last valid index
-        let i = match (0..len).rposition(|i| {
-            atr.atr[i].is_finite() && ema.distance[i].is_finite() && roc.roc[i].is_finite()
-        }) {
-            Some(i) => i,
-            None => {
-                self.strength = 0.0;
-                self.confidence = 0.0;
-                self.computed = true;
+        let trend_anchor = (trend.direction.abs() * trend.confidence).clamp(0.0, 1.0);
 
-                return ValueMap::new()
-                    .with(Self::STRENGTH_KEY, self.strength)
-                    .with(Self::CONFIDENCE_KEY, self.confidence);
-            }
-        };
+        let ema_distance = Self::normalize_ratio(
+            math::last_finite(&ema.distance).unwrap_or(0.0),
+            25.0 / close,
+        );
+        let ema_slope =
+            Self::normalize_ratio(math::last_finite(&ema.slope).unwrap_or(0.0), 50.0 / close);
 
-        let trend_component = ema.slope[i].tanh(); // directional trend force
-        let momentum_component = roc.roc_z[i].tanh(); // normalized impulse
+        let roc_strength =
+            Self::normalize_ratio(math::last_finite(&roc.roc_abs).unwrap_or(0.0), 20.0);
 
-        let volatility_factor = (atr.norm_atr[i] * 10.0).tanh(); // avoid dominance
-        let structure_component = swing.structure_strength[i].tanh();
+        let structure = math::last_finite(&swing.structure_strength)
+            .unwrap_or(0.0)
+            .clamp(0.0, 1.0);
 
-        let trend_w = 0.35 + 0.35 * regime.trend.abs();
-        let momentum_w = 0.25 + 0.25 * regime.volatility;
-        let structure_w = 0.25 + 0.35 * regime.structure.abs();
-        let volatility_w = 0.10 + 0.25 * regime.volatility;
+        let efficiency = math::last_finite(&er.smooth).unwrap_or(0.0).clamp(0.0, 1.0);
 
-        let raw_strength = trend_component * trend_w
-            + momentum_component * momentum_w
-            + structure_component * structure_w
-            + volatility_factor * volatility_w;
+        let regime_trend = regime.trend.abs().clamp(0.0, 1.0);
 
-        // normalize
-        let strength = (raw_strength * regime.participation).tanh();
+        // weighted toward directionality + structure + momentum
+        self.strength = (0.28 * trend_anchor
+            + 0.18 * ema_distance
+            + 0.14 * ema_slope
+            + 0.16 * roc_strength
+            + 0.16 * structure
+            + 0.08 * efficiency)
+            .clamp(0.0, 1.0);
 
-        // confidence = agreement of signals
-        let agreement =
-            (trend_component.signum() + momentum_component.signum() + structure_component.signum())
-                .abs()
-                / 3.0;
+        // how trustworthy the strength estimate is
+        self.confidence = (0.40 * trend.confidence.clamp(0.0, 1.0)
+            + 0.20 * regime_trend
+            + 0.20 * structure
+            + 0.20 * efficiency)
+            .clamp(0.0, 1.0);
 
-        let confidence = (agreement * regime.participation).clamp(0.0, 1.0);
+        // Optional small boost if the regime itself is strongly trending.
+        self.strength = (self.strength * (0.85 + 0.15 * regime_trend)).clamp(0.0, 1.0);
 
-        self.strength = strength.clamp(-1.0, 1.0);
-        self.confidence = confidence;
         self.computed = true;
 
         ValueMap::new()
