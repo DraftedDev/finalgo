@@ -138,6 +138,11 @@ impl ValueMap {
         self.fields.insert(key, field.into());
     }
 
+    pub fn with(mut self, key: impl ToString, field: impl Into<Value>) -> Self {
+        self.add(key, field);
+        self
+    }
+
     pub fn get(&self, key: &str) -> &Value {
         self.fields.get(key).expect("Failed to get field value")
     }

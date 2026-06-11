@@ -1,6 +1,12 @@
-use crate::engine::Engine;
+use crate::engine::Context;
 use crate::utils::ValueMap;
 use std::any::Any;
+
+pub mod participation;
+pub mod quality;
+pub mod strength;
+pub mod trend;
+pub mod volatility;
 
 /// A score based on indicators and optionally other scores if needed.
 pub trait Score: 'static {
@@ -8,7 +14,7 @@ pub trait Score: 'static {
     fn name(&self) -> String;
 
     /// Computes the score.
-    fn compute(&mut self, eng: &Engine) -> ValueMap;
+    fn compute(&mut self, ctx: Context) -> ValueMap;
 
     /// Returns true if the score has been computed.
     fn is_computed(&self) -> bool;

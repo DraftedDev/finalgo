@@ -39,6 +39,29 @@ pub fn last_finite(values: &[f64]) -> Option<f64> {
 }
 
 #[inline]
+pub fn last_finite_mean(values: &[f64], n: usize) -> Option<f64> {
+    let mut sum = 0.0;
+    let mut count = 0usize;
+
+    for &v in values.iter().rev() {
+        if v.is_finite() {
+            sum += v;
+            count += 1;
+        }
+
+        if count == n {
+            break;
+        }
+    }
+
+    if count == 0 {
+        None
+    } else {
+        Some(sum / count as f64)
+    }
+}
+
+#[inline]
 pub fn saturate_unit(x: f64, scale: f64) -> f64 {
     if !x.is_finite() || x <= 0.0 || !scale.is_finite() || scale <= 0.0 {
         0.0
