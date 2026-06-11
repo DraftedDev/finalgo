@@ -1,18 +1,11 @@
-use crate::interface::Interface;
-use crate::score::ScoreRecord;
+use crate::engine::Context;
 use std::any::Any;
-
-#[allow(unused)]
-pub mod adx;
 
 #[allow(unused)]
 pub mod atr;
 
 #[allow(unused)]
-pub mod bol_width;
-
-#[allow(unused)]
-pub mod donchian;
+pub mod boll;
 
 #[allow(unused)]
 pub mod ema;
@@ -21,33 +14,34 @@ pub mod ema;
 pub mod er;
 
 #[allow(unused)]
-pub mod rel_vol;
-
-#[allow(unused)]
 pub mod roc;
 
 #[allow(unused)]
 pub mod rsi;
 
 #[allow(unused)]
-pub mod stochastic;
+pub mod rvol;
+
+#[allow(unused)]
+pub mod stoch;
 
 #[allow(unused)]
 pub mod swing;
 
-#[allow(unused)]
-pub mod liquidity;
-
-#[allow(unused)]
-pub mod bos;
-
+/// A market indicator that may depend on OHLCV data or other indicators.
 pub trait Indicator: 'static {
+    /// The name of the indicator.
     fn name(&self) -> String;
 
-    fn compute(&mut self, int: &Interface);
+    /// Computes the indicator.
+    fn compute(&mut self, ctx: Context);
+
+    /// Returns true if the indicator has been computed.
     fn is_computed(&self) -> bool;
 
-    fn score(&self, int: &Interface) -> Vec<ScoreRecord>;
+    /// Reset the indicator data.
+    fn reset(&mut self);
 
+    /// Returns a reference to the indicator as an [Any].
     fn as_any(&self) -> &dyn Any;
 }

@@ -1,8 +1,8 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_CANDLE_LOOK_BACK};
 use crate::data::{DataKey, StockData};
 use crate::database::Database;
-use crate::eval::{Evaluator, ScoreLoss};
-use crate::{interface, utils};
+use crate::eval::Evaluator;
+use crate::{engine, utils};
 use clap::Parser;
 use tokio::task::JoinSet;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
@@ -28,9 +28,12 @@ impl Cli {
             },
         )
         .await;
-        let mut interface = interface::build(data);
 
-        interface.run(true);
+        let mut engine = engine::build();
+
+        let score = engine.compute(true, &data);
+
+        tracing::info!("[######################### SCORE #########################]\n{score}");
     }
 
     pub async fn eval(&self, args: EvalArgs) {
@@ -57,62 +60,57 @@ impl Cli {
             t = utils::add_naive_date(t, 1);
         }
 
-        let mut eval = utils::with_progress("Fetching", data.len() as u64, |span| async move {
-            let database = Database::new();
-            let mut eval = Evaluator::new();
+        let fetched =
+            utils::with_progress_async("Fetching", data.len() as u64, |span| async move {
+                let database = Database::new();
+                let mut fetched = Vec::with_capacity(data.len());
 
-            for chunk in data.chunks(FETCH_CHUNK_SIZE).map(|chunk| chunk.to_vec()) {
-                let mut set = JoinSet::new();
+                for chunk in data.chunks(FETCH_CHUNK_SIZE).map(|chunk| chunk.to_vec()) {
+                    let mut set = JoinSet::new();
 
-                for (t, t_target, ticker) in chunk {
-                    let database = database.clone();
-                    let span = span.clone();
-                    set.spawn(async move {
-                        let data = StockData::fetch(
-                            &database,
-                            DataKey {
-                                end: utils::format_naive_date(t),
-                                size: CANDLE_LOOK_BACK,
-                                ticker: ticker.clone(),
-                            },
-                        )
-                        .await;
+                    for (t, t_target, ticker) in chunk {
+                        let database = database.clone();
+                        let span = span.clone();
+                        set.spawn(async move {
+                            let data = StockData::fetch(
+                                &database,
+                                DataKey {
+                                    end: utils::format_naive_date(t),
+                                    size: CANDLE_LOOK_BACK,
+                                    ticker: ticker.clone(),
+                                },
+                            )
+                            .await;
 
-                        let target = StockData::fetch(
-                            &database,
-                            DataKey {
-                                end: utils::format_naive_date(t_target),
-                                size: TARGET_CANDLE_LOOK_BACK,
-                                ticker: ticker.clone(),
-                            },
-                        )
-                        .await;
+                            let target = StockData::fetch(
+                                &database,
+                                DataKey {
+                                    end: utils::format_naive_date(t_target),
+                                    size: TARGET_CANDLE_LOOK_BACK,
+                                    ticker: ticker.clone(),
+                                },
+                            )
+                            .await;
 
-                        span.pb_inc(1);
+                            span.pb_inc(1);
 
-                        (data, target)
-                    });
+                            (data, target)
+                        });
+                    }
+
+                    for (predict, target) in set.join_all().await {
+                        fetched.push((predict, target));
+                    }
                 }
 
-                for (predict, target) in set.join_all().await {
-                    eval.add(predict, target);
-                }
-            }
+                fetched
+            })
+            .await;
 
-            eval
-        })
-        .await;
+        let mut eval = Evaluator::new();
+        let result = eval.eval(fetched);
 
-        tracing::info!("Evaluating...");
-
-        let (losses, report) = eval.eval().await;
-        let loss = ScoreLoss::aggregate(&losses);
-
-        tracing::info!("[############### LOSS ###############]");
-        loss.print();
-
-        tracing::info!("[############### ACCURACY ###############]");
-        report.print();
+        tracing::info!("[######################### EVAL #########################]\n{result}");
     }
 }
 

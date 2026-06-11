@@ -1,19 +1,48 @@
+use crate::engine::Context;
 use crate::indicator::Indicator;
-use crate::interface::Interface;
-use crate::math::z_score;
-use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
+/// # Average True Range (Wilder)
+///
+/// Measures market volatility using True Range and Wilder smoothing.
 pub struct AvgTrueRange<const PERIOD: usize> {
+    /// True Range (TR) for each candle.
+    ///
+    /// Represents the largest of:
+    /// - current high - current low
+    /// - abs(current high - previous close)
+    /// - abs(current low - previous close)
+    ///
+    /// Higher values indicate larger price movement during the candle.
+    pub tr: Vec<f64>,
+
+    /// Average True Range (ATR).
+    ///
+    /// Wilder-smoothed moving average of `tr`.
+    ///
+    /// Represents the average absolute price movement over time.
+    /// Larger values indicate a more volatile market.
     pub atr: Vec<f64>,
-    pub atr_z: Vec<f64>,
+
+    /// Normalized ATR.
+    ///
+    /// Computed as:
+    ///
+    /// ```text
+    /// ATR / Close
+    /// ```
+    ///
+    /// Expresses volatility relative to the current price,
+    /// making values comparable across assets with different prices.
+    pub norm_atr: Vec<f64>,
 }
 
 impl<const PERIOD: usize> AvgTrueRange<PERIOD> {
     pub fn new() -> Self {
         Self {
+            tr: Vec::new(),
             atr: Vec::new(),
-            atr_z: Vec::new(),
+            norm_atr: Vec::new(),
         }
     }
 }
@@ -23,74 +52,64 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
         format!("atr-{}", PERIOD)
     }
 
-    fn compute(&mut self, int: &Interface) {
-        let data = int.raw();
+    fn compute(&mut self, ctx: Context) {
+        let data = ctx.data();
 
         let highs = &data.highs;
         let lows = &data.lows;
         let closes = &data.closes;
 
         let len = closes.len();
-        if len == 0 {
-            self.atr.clear();
-            self.atr_z.clear();
-            return;
-        }
 
-        let mut tr_values = Vec::with_capacity(len);
-        tr_values.push(highs[0] - lows[0]);
+        assert!(len >= PERIOD, "Need at least {PERIOD} samples");
+
+        self.tr = vec![0.0; len];
+        self.atr = vec![f64::NAN; len];
+        self.norm_atr = vec![f64::NAN; len];
+
+        // True Range
+        self.tr[0] = highs[0] - lows[0];
 
         for i in 1..len {
-            let tr = f64::max(
-                highs[i] - lows[i],
-                f64::max(
-                    (highs[i] - closes[i - 1]).abs(),
-                    (lows[i] - closes[i - 1]).abs(),
-                ),
-            );
+            let high = highs[i];
+            let low = lows[i];
+            let prev_close = closes[i - 1];
 
-            tr_values.push(tr);
+            self.tr[i] = (high - low)
+                .max((high - prev_close).abs())
+                .max((low - prev_close).abs());
         }
 
-        let alpha = 2.0 / (PERIOD as f64 + 1.0);
+        // Seed ATR using SMA(TR)
+        let seed = self.tr[..PERIOD].iter().copied().sum::<f64>() / PERIOD as f64;
 
-        self.atr = vec![0.0; len];
-        let mut atr = tr_values[0];
+        self.atr[PERIOD - 1] = seed;
 
-        for i in 0..len {
-            atr = alpha * tr_values[i] + (1.0 - alpha) * atr;
+        // Wilder smoothing
+        let mut atr = seed;
+
+        for i in PERIOD..len {
+            atr = ((atr * (PERIOD as f64 - 1.0)) + self.tr[i]) / PERIOD as f64;
+
             self.atr[i] = atr;
         }
 
-        self.atr_z = z_score(&self.atr);
+        // Normalized ATR
+        for i in (PERIOD - 1)..len {
+            let close = closes[i];
+
+            if close.abs() > 1e-12 {
+                self.norm_atr[i] = self.atr[i] / close;
+            }
+        }
     }
 
     fn is_computed(&self) -> bool {
         !self.atr.is_empty()
     }
 
-    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
-        let mut out = Vec::new();
-
-        let atr_z = match self.atr_z.last() {
-            Some(v) if v.is_finite() => *v,
-            _ => return out,
-        };
-
-        let normalized_vol = (atr_z / 2.0).tanh();
-
-        out.push(ScoreRecord::new(
-            ScoreType::Volatility,
-            normalized_vol.clamp(-1.0, 1.0),
-            0.85,
-            0.90,
-        ));
-
-        let quality = (-normalized_vol * 0.25).clamp(-1.0, 1.0);
-
-        out.push(ScoreRecord::new(ScoreType::Quality, quality, 0.10, 0.50));
-
-        out
+    fn reset(&mut self) {
+        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -1,0 +1,64 @@
+use crate::data::StockData;
+use crate::engine::Engine;
+use crate::eval::metric::{Metric, MetricInput};
+use crate::utils::{FastMap, ValueMap};
+use crate::{engine, utils};
+use tracing_indicatif::span_ext::IndicatifSpanExt;
+
+pub mod metric;
+
+pub struct Evaluator {
+    engine: Engine,
+    metrics: FastMap<String, Box<dyn Metric>>,
+}
+
+impl Evaluator {
+    pub fn new() -> Self {
+        Self {
+            engine: engine::build(),
+            metrics: FastMap::with_capacity_and_hasher(16, Default::default()),
+        }
+    }
+
+    pub fn add_metric(&mut self, metric: Box<dyn Metric>) {
+        let name = metric.name();
+
+        if self.metrics.contains_key(&name) {
+            panic!("Metric already initialized");
+        }
+
+        self.metrics.insert(name, metric);
+    }
+
+    pub fn eval(&mut self, samples: Vec<(StockData, StockData)>) -> ValueMap {
+        let inputs = utils::with_progress("Computing", samples.len() as u64, |span| {
+            let mut results = Vec::with_capacity(samples.len());
+
+            for (data, target) in samples {
+                let score = self.engine.compute(false, &data);
+                self.engine.reset();
+
+                results.push(MetricInput { score, target });
+            }
+
+            span.pb_inc(1);
+
+            results
+        });
+
+        let result = utils::with_progress("Evaluating", inputs.len() as u64, |span| {
+            let mut result = ValueMap::new();
+
+            for metric in self.metrics.values() {
+                let metric_result = metric.compute(&inputs);
+                result.merge(metric_result);
+            }
+
+            span.pb_inc(1);
+
+            result
+        });
+
+        result
+    }
+}

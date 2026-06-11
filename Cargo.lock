@@ -361,6 +361,7 @@ dependencies = [
  "clap",
  "heed",
  "indicatif",
+ "rustc-hash",
  "serde",
  "time",
  "tokio",

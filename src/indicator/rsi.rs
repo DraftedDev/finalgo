@@ -1,19 +1,53 @@
+use crate::engine::Context;
 use crate::indicator::Indicator;
-use crate::interface::Interface;
-use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
+/// # Relative Strength Index (RSI)
+///
+/// Momentum oscillator measuring the speed and magnitude of recent price changes.
+/// Values are normalized to a symmetric range for downstream model usage.
 pub struct RelStrengthIdx<const PERIOD: usize> {
+    /// Normalized RSI values.
+    ///
+    /// Computed from classical RSI (0–100) and transformed into:
+    ///
+    /// ```text
+    /// (RSI - 50) / 50
+    /// ```
+    ///
+    /// Final range:
+    /// - +1.0 → extremely overbought / strong upward momentum
+    /// -  0.0 → neutral momentum
+    /// - -1.0 → extremely oversold / strong downward momentum
+    ///
+    /// This normalization makes RSI compatible with other symmetric indicators
+    /// like direction, stochastic, and BOS signals.
     pub rsi: Vec<f64>,
-    pub rsi_slope: Vec<f64>,
 }
 
 impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
     pub fn new() -> Self {
-        Self {
-            rsi: Vec::new(),
-            rsi_slope: Vec::new(),
+        Self { rsi: Vec::new() }
+    }
+
+    #[inline]
+    fn compute_rsi(avg_gain: f64, avg_loss: f64) -> f64 {
+        if avg_loss == 0.0 {
+            return 100.0;
         }
+
+        if avg_gain == 0.0 {
+            return 0.0;
+        }
+
+        let rs = avg_gain / avg_loss;
+        100.0 - (100.0 / (1.0 + rs))
+    }
+
+    #[inline]
+    fn normalize(v: f64) -> f64 {
+        // convert 0..100 -> -1..1
+        ((v - 50.0) / 50.0).clamp(-1.0, 1.0)
     }
 }
 
@@ -22,66 +56,44 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         format!("rsi-{}", PERIOD)
     }
 
-    fn compute(&mut self, int: &Interface) {
-        let closes = &int.raw().closes;
+    fn compute(&mut self, ctx: Context) {
+        let closes = &ctx.data().closes;
         let len = closes.len();
 
         self.rsi = vec![f64::NAN; len];
-        self.rsi_slope = vec![f64::NAN; len];
 
         if len <= PERIOD + 1 {
             return;
         }
 
-        let mut gains = vec![0.0; len];
-        let mut losses = vec![0.0; len];
-
-        for i in 1..len {
-            let change = closes[i] - closes[i - 1];
-            if change > 0.0 {
-                gains[i] = change;
-            } else {
-                losses[i] = -change;
-            }
-        }
-
-        let mut avg_gain = 0.0;
-        let mut avg_loss = 0.0;
+        let mut gains = 0.0;
+        let mut losses = 0.0;
 
         for i in 1..=PERIOD {
-            avg_gain += gains[i];
-            avg_loss += losses[i];
+            let diff = closes[i] - closes[i - 1];
+            if diff >= 0.0 {
+                gains += diff;
+            } else {
+                losses += -diff;
+            }
         }
 
-        avg_gain /= PERIOD as f64;
-        avg_loss /= PERIOD as f64;
+        let mut avg_gain = gains / PERIOD as f64;
+        let mut avg_loss = losses / PERIOD as f64;
 
-        let mut prev_rsi = f64::NAN;
+        let mut rsi = Self::compute_rsi(avg_gain, avg_loss);
+        self.rsi[PERIOD] = Self::normalize(rsi);
 
-        for i in PERIOD..len {
-            avg_gain = (avg_gain * (PERIOD as f64 - 1.0) + gains[i]) / PERIOD as f64;
-            avg_loss = (avg_loss * (PERIOD as f64 - 1.0) + losses[i]) / PERIOD as f64;
+        for i in (PERIOD + 1)..len {
+            let diff = closes[i] - closes[i - 1];
+            let gain = diff.max(0.0);
+            let loss = (-diff).max(0.0);
 
-            let rs = match (avg_gain, avg_loss) {
-                (0.0, 0.0) => 1.0,
-                (_, 0.0) => f64::INFINITY,
-                (0.0, _) => 0.0,
-                _ => avg_gain / avg_loss,
-            };
+            avg_gain = (avg_gain * (PERIOD as f64 - 1.0) + gain) / PERIOD as f64;
+            avg_loss = (avg_loss * (PERIOD as f64 - 1.0) + loss) / PERIOD as f64;
 
-            let rsi = if rs.is_infinite() {
-                100.0
-            } else {
-                100.0 - (100.0 / (1.0 + rs))
-            };
-
-            self.rsi[i] = rsi;
-
-            if prev_rsi.is_finite() {
-                self.rsi_slope[i] = rsi - prev_rsi;
-            }
-
-            prev_rsi = rsi;
+            rsi = Self::compute_rsi(avg_gain, avg_loss);
+            self.rsi[i] = Self::normalize(rsi);
         }
     }
 
@@ -89,69 +101,8 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         !self.rsi.is_empty()
     }
 
-    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
-        let mut out = Vec::new();
-
-        let len = self.rsi.len().min(self.rsi_slope.len());
-        if len == 0 {
-            return out;
-        }
-
-        for i in 0..len {
-            let rsi = self.rsi[i];
-            let slope = self.rsi_slope[i];
-
-            if !rsi.is_finite() || !slope.is_finite() {
-                continue;
-            }
-
-            let direction = ((rsi - 50.0) / 50.0).clamp(-1.0, 1.0);
-
-            let strength = direction.abs().clamp(0.0, 1.0);
-
-            let slope_norm = (slope / 10.0).clamp(-1.0, 1.0);
-
-            let quality = if slope_norm.abs() < 1e-6 {
-                0.0
-            } else if (direction > 0.0 && slope_norm > 0.0) || (direction < 0.0 && slope_norm < 0.0)
-            {
-                (1.0 - slope_norm.abs() * 0.5).clamp(0.0, 1.0)
-            } else {
-                (-slope_norm.abs()).clamp(-1.0, 0.0)
-            };
-
-            let confidence = (strength * (1.0 - slope_norm.abs())).clamp(0.0, 1.0);
-
-            let recency = if len > 1 {
-                i as f64 / (len - 1) as f64
-            } else {
-                1.0
-            };
-            let weight = (0.25 + 0.75 * recency).clamp(0.0, 1.0);
-
-            out.push(ScoreRecord::new(
-                ScoreType::Direction,
-                direction,
-                weight,
-                confidence,
-            ));
-
-            out.push(ScoreRecord::new(
-                ScoreType::Strength,
-                strength,
-                weight,
-                confidence,
-            ));
-
-            out.push(ScoreRecord::new(
-                ScoreType::Quality,
-                quality,
-                weight,
-                confidence,
-            ));
-        }
-
-        out
+    fn reset(&mut self) {
+        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -1,3 +1,4 @@
+#[inline]
 pub fn z_score(values: &[f64]) -> Vec<f64> {
     if values.is_empty() {
         return vec![];
@@ -13,42 +14,12 @@ pub fn z_score(values: &[f64]) -> Vec<f64> {
     values.iter().map(|v| (v - mean) / std).collect()
 }
 
-pub fn rolling_min_max(values: &[f64], period: usize) -> Vec<f64> {
-    let mut out = vec![0.0; values.len()];
-
-    for i in period..values.len() {
-        let window = &values[i - period..=i];
-
-        let min = window.iter().cloned().fold(f64::INFINITY, f64::min);
-
-        let max = window.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-
-        let range = max - min;
-
-        out[i] = if range == 0.0 {
-            0.0
-        } else {
-            (values[i] - min) / range
-        };
-    }
-
-    out
-}
-
-pub fn norm_atr(values: &[f64], atr: &[f64]) -> Vec<f64> {
-    assert_eq!(values.len(), atr.len());
-
-    values
-        .iter()
-        .zip(atr.iter())
-        .map(|(v, a)| if *a == 0.0 { 0.0 } else { v / a })
-        .collect()
-}
-
+#[inline]
 pub fn mean(values: &[f64]) -> f64 {
     values.iter().sum::<f64>() / values.len() as f64
 }
 
+#[inline]
 pub fn std_dev(values: &[f64], mean: f64) -> f64 {
     let variance = values
         .iter()
@@ -60,4 +31,32 @@ pub fn std_dev(values: &[f64], mean: f64) -> f64 {
         / values.len() as f64;
 
     variance.sqrt()
+}
+
+#[inline]
+pub fn last_finite(values: &[f64]) -> Option<f64> {
+    values.iter().rev().copied().find(|v| v.is_finite())
+}
+
+#[inline]
+pub fn saturate_unit(x: f64, scale: f64) -> f64 {
+    if !x.is_finite() || x <= 0.0 || !scale.is_finite() || scale <= 0.0 {
+        0.0
+    } else {
+        (x / scale).tanh().clamp(0.0, 1.0)
+    }
+}
+
+#[inline]
+pub fn last_non_zero(values: &[f64]) -> Option<f64> {
+    values
+        .iter()
+        .rev()
+        .copied()
+        .find(|v| v.is_finite() && v.abs() > 1e-12)
+}
+
+#[inline]
+pub fn sigmoid(x: f64) -> f64 {
+    1.0 / (1.0 + (-x).exp())
 }

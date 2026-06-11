@@ -1,112 +1,143 @@
+use crate::engine::Context;
 use crate::indicator::Indicator;
-use crate::interface::Interface;
-use crate::score::{ScoreRecord, ScoreType};
 use std::any::Any;
 
-pub struct EfficiencyRatio<const PERIOD: usize> {
+/// # Efficiency Ratio Indicator
+///
+/// Measures how efficiently price moves from one point to another.
+///
+/// High values indicate directional movement with little noise.
+/// Low values indicate choppy or mean-reverting price action.
+pub struct EfficiencyRatio<const PERIOD: usize, const SMOOTH: usize> {
+    /// Raw Efficiency Ratio (ER).
+    ///
+    /// Computed as:
+    ///
+    /// ```text
+    /// abs(close_t - close_{t-PERIOD})
+    /// ---------------------------------
+    /// sum(abs(close_i - close_{i-1}))
+    /// ```
+    ///
+    /// Range:
+    ///
+    /// ```text
+    /// [0, 1]
+    /// ```
+    ///
+    /// Interpretation:
+    /// - 1.0 = perfectly directional movement
+    /// - 0.0 = highly noisy or sideways movement
     pub er: Vec<f64>,
-    pub smoothed: Vec<f64>,
+
+    /// Smoothed Efficiency Ratio.
+    ///
+    /// Moving average of `er` over `SMOOTH` periods.
+    ///
+    /// Reduces short-term fluctuations and provides a more stable
+    /// estimate of market efficiency.
+    ///
+    /// Range:
+    ///
+    /// ```text
+    /// [0, 1]
+    /// ```
+    pub smooth: Vec<f64>,
+
+    /// First derivative of the smoothed Efficiency Ratio.
+    ///
+    /// Computed as:
+    ///
+    /// ```text
+    /// smooth_t - smooth_{t-1}
+    /// ```
+    ///
+    /// Interpretation:
+    /// - positive = efficiency is increasing
+    /// - negative = efficiency is decreasing
+    /// - near zero = efficiency is stable
+    ///
+    /// Can be used to detect transitions between trending
+    /// and choppy market conditions.
     pub slope: Vec<f64>,
-    pub accel: Vec<f64>,
 }
 
-impl<const PERIOD: usize> EfficiencyRatio<PERIOD> {
+impl<const PERIOD: usize, const SMOOTH: usize> EfficiencyRatio<PERIOD, SMOOTH> {
     pub fn new() -> Self {
         Self {
             er: Vec::new(),
-            smoothed: Vec::new(),
+            smooth: Vec::new(),
             slope: Vec::new(),
-            accel: Vec::new(),
         }
     }
 
-    fn mean_last_n(values: &[f64], n: usize) -> f64 {
-        let start = values.len().saturating_sub(n);
-        let slice = &values[start..];
+    #[inline]
+    fn mean(slice: &[f64]) -> f64 {
         let mut sum = 0.0;
-        let mut count = 0;
+        let mut n = 0;
 
         for v in slice {
             if v.is_finite() {
                 sum += *v;
-                count += 1;
+                n += 1;
             }
         }
 
-        if count == 0 { 0.0 } else { sum / count as f64 }
+        if n == 0 { 0.0 } else { sum / n as f64 }
     }
 
-    fn stability(values: &[f64], n: usize) -> f64 {
-        let start = values.len().saturating_sub(n);
-        let slice = &values[start..];
-
-        let mut mean = 0.0;
-        let mut count = 0;
-
-        for v in slice {
-            if v.is_finite() {
-                mean += *v;
-                count += 1;
-            }
+    #[inline]
+    fn log_return(a: f64, b: f64) -> f64 {
+        if a > 0.0 && b > 0.0 {
+            (b / a).ln()
+        } else {
+            0.0
         }
-
-        if count == 0 {
-            return 0.0;
-        }
-
-        mean /= count as f64;
-
-        let mut var = 0.0;
-        for v in slice {
-            if v.is_finite() {
-                let d = v - mean;
-                var += d * d;
-            }
-        }
-
-        1.0 / (1.0 + (var / count as f64).sqrt())
     }
 }
 
-impl<const PERIOD: usize> Indicator for EfficiencyRatio<PERIOD> {
+impl<const PERIOD: usize, const SMOOTH: usize> Indicator for EfficiencyRatio<PERIOD, SMOOTH> {
     fn name(&self) -> String {
         format!("er-{}", PERIOD)
     }
 
-    fn compute(&mut self, int: &Interface) {
-        let closes = &int.raw().closes;
+    fn compute(&mut self, ctx: Context) {
+        let closes = &ctx.data().closes;
         let len = closes.len();
 
-        self.er = vec![0.0; len];
-        self.smoothed = vec![0.0; len];
-        self.slope = vec![0.0; len];
-        self.accel = vec![0.0; len];
+        self.er = vec![f64::NAN; len];
+        self.smooth = vec![f64::NAN; len];
+        self.slope = vec![f64::NAN; len];
 
         for i in PERIOD..len {
-            let numerator = (closes[i] - closes[i - PERIOD]).abs();
+            let mut path = 0.0;
 
-            let mut denom = 0.0;
             for j in (i - PERIOD + 1)..=i {
-                denom += (closes[j] - closes[j - 1]).abs();
+                path += (closes[j] - closes[j - 1]).abs();
             }
 
-            self.er[i] = if denom > 0.0 { numerator / denom } else { 0.0 };
+            let net = (closes[i] - closes[i - PERIOD]).abs();
+
+            self.er[i] = if path > 1e-12 {
+                (net / path).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
         }
 
-        let alpha = 0.5;
-        let mut smooth = self.er[0];
+        for i in (PERIOD + SMOOTH)..len {
+            let window = &self.er[i - SMOOTH..i];
 
-        for i in 0..len {
-            smooth = alpha * self.er[i] + (1.0 - alpha) * smooth;
-            self.smoothed[i] = smooth;
-        }
+            if window.iter().all(|v| v.is_finite()) {
+                self.smooth[i] = Self::mean(window).clamp(0.0, 1.0);
 
-        for i in 1..len {
-            self.slope[i] = self.smoothed[i] - self.smoothed[i - 1];
-        }
-
-        for i in 2..len {
-            self.accel[i] = self.slope[i] - self.slope[i - 1];
+                let prev = self.smooth[i - 1];
+                if prev.is_finite() {
+                    self.slope[i] = self.smooth[i] - prev;
+                } else {
+                    self.slope[i] = 0.0;
+                }
+            }
         }
     }
 
@@ -114,36 +145,8 @@ impl<const PERIOD: usize> Indicator for EfficiencyRatio<PERIOD> {
         !self.er.is_empty()
     }
 
-    fn score(&self, _: &Interface) -> Vec<ScoreRecord> {
-        let window = 10;
-
-        let er_mean = Self::mean_last_n(&self.smoothed, window);
-        let slope = Self::mean_last_n(&self.slope, window);
-        let accel = Self::mean_last_n(&self.accel, window);
-
-        let quality = (er_mean * 2.0 - 1.0).tanh();
-
-        let direction = (slope * 8.0 + accel * 4.0).tanh();
-
-        let strength = (er_mean * 0.6 + slope.abs() * 0.4).clamp(0.0, 1.0);
-
-        let confidence = Self::stability(&self.smoothed, window);
-
-        vec![
-            ScoreRecord::new(
-                ScoreType::Quality,
-                quality.clamp(-1.0, 1.0),
-                0.7,
-                confidence,
-            ),
-            ScoreRecord::new(
-                ScoreType::Direction,
-                direction.clamp(-1.0, 1.0),
-                0.6,
-                confidence,
-            ),
-            ScoreRecord::new(ScoreType::Strength, strength, 0.5, confidence),
-        ]
+    fn reset(&mut self) {
+        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {
