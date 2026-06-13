@@ -65,6 +65,15 @@ impl Score for TrendScore {
         let roc = ctx.indicator::<RateOfChange<10>>();
         let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
 
+        let close = ctx
+            .data()
+            .closes
+            .last()
+            .copied()
+            .unwrap_or(1.0)
+            .abs()
+            .max(1e-12);
+
         let ema_distance = math::last_finite(&ema.distance).unwrap_or(0.0);
         let ema_slope = math::last_finite(&ema.slope).unwrap_or(0.0);
         let roc_value = math::last_finite(&roc.roc).unwrap_or(0.0);
@@ -74,44 +83,58 @@ impl Score for TrendScore {
         let bos = math::last_finite(&swing.bos).unwrap_or(0.0);
         let choch = math::last_finite(&swing.choch).unwrap_or(0.0);
 
-        let ema_bias = (ema_distance * 25.0).tanh();
-        let ema_momentum = (ema_slope * 50.0).tanh();
+        let ema_bias = ((ema_distance / close) * 20.0).tanh();
+        let ema_momentum = ((ema_slope / close) * 80.0).tanh();
+
         let roc_bias = (roc_value * 15.0).tanh();
 
         let structure_bias = structure.clamp(-1.0, 1.0);
-
-        // BOS / CHoCH are event-like, so treat them as boosters.
         let bos_bias = bos.clamp(-1.0, 1.0);
         let choch_bias = choch.clamp(-1.0, 1.0);
 
-        // Combine into a raw trend direction.
-        //
-        // Direction:
-        // - positive => bullish
-        // - negative => bearish
-        let direction = (regime.trend * 0.25
-            + regime.structure * 0.15
-            + structure_bias * 0.20
-            + ema_bias * 0.15
+        let regime_trend = regime.trend.clamp(-1.0, 1.0);
+        let regime_structure = regime.structure.clamp(-1.0, 1.0);
+
+        let direction = (regime_trend * 0.20
+            + regime_structure * 0.15
+            + structure_bias * 0.22
+            + ema_bias * 0.18
             + ema_momentum * 0.10
             + roc_bias * 0.10
             + bos_bias * 0.03
             + choch_bias * 0.02)
             .clamp(-1.0, 1.0);
 
-        // Confidence should be high when:
-        // - structure agrees
-        // - ER is high
-        // - regime trend is strong
-        // - volatility is not extreme
-        //
-        // If volatility is too high, confidence drops a bit.
+        let weighted_abs_sum = regime_trend.abs() * 0.20
+            + regime_structure.abs() * 0.15
+            + structure_bias.abs() * 0.22
+            + ema_bias.abs() * 0.18
+            + ema_momentum.abs() * 0.10
+            + roc_bias.abs() * 0.10
+            + bos_bias.abs() * 0.03
+            + choch_bias.abs() * 0.02;
+
+        let consensus = if weighted_abs_sum > 1e-12 {
+            (direction.abs() / weighted_abs_sum).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+
+        let signal_energy = weighted_abs_sum.clamp(0.0, 1.0);
+
+        let pair_agreement = {
+            let a = 1.0 - (regime_trend - structure_bias).abs() * 0.5;
+            let b = 1.0 - (structure_bias - ema_bias).abs() * 0.5;
+            let c = 1.0 - (ema_bias - roc_bias).abs() * 0.5;
+            ((a + b + c) / 3.0).clamp(0.0, 1.0)
+        };
+
         let volatility_penalty = 1.0 - regime.volatility.clamp(0.0, 1.0);
 
-        let confidence = (structure_strength.abs() * 0.30
-            + regime.trend.abs() * 0.25
-            + regime.structure.abs() * 0.15
+        let confidence = (consensus * signal_energy * 0.35
+            + pair_agreement * 0.25
             + er_value.clamp(0.0, 1.0) * 0.20
+            + structure_strength.clamp(0.0, 1.0) * 0.10
             + volatility_penalty * 0.10)
             .clamp(0.0, 1.0);
 

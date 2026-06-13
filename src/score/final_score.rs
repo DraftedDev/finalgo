@@ -33,11 +33,6 @@ impl FinalScore {
             computed: false,
         }
     }
-
-    #[inline]
-    fn centered(x: f64) -> f64 {
-        x - 0.5
-    }
 }
 
 impl Score for FinalScore {
@@ -55,38 +50,39 @@ impl Score for FinalScore {
         let direction = trend.direction.clamp(-1.0, 1.0);
 
         let strength_val = strength.strength.clamp(0.0, 1.0);
-        let strength_conf = strength.confidence.clamp(0.0, 1.0);
-
+        let qual = quality.quality.clamp(0.0, 1.0);
+        let part = participation.participation.clamp(0.0, 1.0);
         let vol = volatility.volatility.clamp(0.0, 1.0);
 
-        let qual = quality.quality.clamp(0.0, 1.0);
+        let strength_conf = strength.confidence.clamp(0.0, 1.0);
         let qual_conf = quality.confidence.clamp(0.0, 1.0);
-
-        let part = participation.participation.clamp(0.0, 1.0);
         let part_conf = participation.confidence.clamp(0.0, 1.0);
-
         let trend_conf = trend.confidence.clamp(0.0, 1.0);
 
-        let gain = 1.0
-            + 0.35 * Self::centered(strength_val)
-            + 0.25 * Self::centered(qual)
-            + 0.15 * Self::centered(part)
-            - 0.30 * Self::centered(vol);
+        let market_gate = (strength_val * 0.5 + qual * 0.5) * part;
 
-        let gain = gain.clamp(0.60, 1.60);
+        let market_gate = market_gate.powf(1.5);
 
-        let score = (direction * gain).clamp(-1.0, 1.0);
+        let ideal_vol = 0.55;
+        let vol_score = 1.0 - (vol - ideal_vol).abs() * 1.5;
+        let vol_score = vol_score.clamp(0.0, 1.0);
 
-        let confidence = (trend_conf * 0.30
+        let directional_power = strength_val * 0.5 + qual * 0.3 + vol_score * 0.2;
+
+        let score = direction * directional_power * market_gate;
+
+        let score = score.clamp(-1.0, 1.0);
+
+        let confidence = (trend_conf * 0.35
             + strength_conf * 0.20
             + qual_conf * 0.20
             + part_conf * 0.15
-            + (1.0 - vol) * 0.15)
+            + vol_score * 0.10)
             .clamp(0.0, 1.0);
 
-        let decision = if score >= 0.18 {
+        let decision = if score > 0.20 {
             "LONG"
-        } else if score <= -0.18 {
+        } else if score < -0.20 {
             "SHORT"
         } else {
             "NEUTRAL"

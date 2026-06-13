@@ -41,6 +41,20 @@ impl QualityScore {
             computed: false,
         }
     }
+
+    #[inline]
+    fn sign_agreement(trend: f64, structure: f64) -> f64 {
+        let trend_mag = trend.abs();
+        let structure_mag = structure.abs();
+
+        if trend_mag < 0.15 || structure_mag < 0.15 {
+            0.5
+        } else if trend.signum() == structure.signum() {
+            1.0
+        } else {
+            0.25
+        }
+    }
 }
 
 impl Score for QualityScore {
@@ -52,47 +66,47 @@ impl Score for QualityScore {
         let regime = ctx.regime();
 
         let trend = if regime.trend.is_finite() {
-            regime.trend.abs().clamp(0.0, 1.0)
+            regime.trend.clamp(-1.0, 1.0)
         } else {
             0.0
         };
 
         let structure = if regime.structure.is_finite() {
-            regime.structure.abs().clamp(0.0, 1.0)
+            regime.structure.clamp(-1.0, 1.0)
         } else {
             0.0
         };
 
-        // Higher when volatility is lower.
-        let stability = 1.0 - regime.volatility;
-
-        // Penalize disagreement between trend and structure.
-        let alignment = if regime.trend.is_finite()
-            && regime.structure.is_finite()
-            && trend > 0.2
-            && structure > 0.2
-        {
-            if regime.trend.signum() == regime.structure.signum() {
-                1.0
-            } else {
-                0.75
-            }
+        let participation = if regime.participation.is_finite() {
+            regime.participation.clamp(0.0, 1.0)
         } else {
-            0.90
+            0.0
         };
 
-        // Clean market = trend + structure + participation + stability.
-        let raw_quality =
-            (trend * 0.30 + structure * 0.30 + regime.participation * 0.20 + stability * 0.20)
-                * alignment;
+        let volatility = if regime.volatility.is_finite() {
+            regime.volatility.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
 
-        // Confidence is similar, but slightly more conservative.
-        let raw_confidence =
-            (trend * 0.25 + structure * 0.30 + regime.participation * 0.20 + stability * 0.25)
-                * alignment;
+        let trend_mag = trend.abs();
+        let structure_mag = structure.abs();
+        let stability = 1.0 - volatility;
 
-        self.quality = raw_quality.clamp(0.0, 1.0);
-        self.confidence = raw_confidence.clamp(0.0, 1.0);
+        let alignment = Self::sign_agreement(trend, structure);
+
+        let base_quality =
+            trend_mag * 0.30 + structure_mag * 0.30 + participation * 0.20 + stability * 0.20;
+
+        let quality = (base_quality * (0.70 + 0.30 * alignment)).clamp(0.0, 1.0);
+
+        let confidence_base =
+            trend_mag * 0.25 + structure_mag * 0.30 + participation * 0.20 + stability * 0.25;
+
+        let confidence = (confidence_base * alignment).clamp(0.0, 1.0);
+
+        self.quality = quality;
+        self.confidence = confidence;
         self.computed = true;
 
         ValueMap::new()

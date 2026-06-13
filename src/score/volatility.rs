@@ -1,7 +1,6 @@
 use crate::engine::Context;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::boll::BollingerBands;
-use crate::math;
 use crate::score::Score;
 use crate::utils::ValueMap;
 use std::any::Any;
@@ -46,12 +45,44 @@ impl VolatilityScore {
     }
 
     #[inline]
-    fn normalize_positive(x: f64, k: f64) -> f64 {
-        if !x.is_finite() || x <= 0.0 {
-            0.0
-        } else {
-            (1.0 - (-k * x).exp()).clamp(0.0, 1.0)
+    fn clamp01(x: f64) -> f64 {
+        x.clamp(0.0, 1.0)
+    }
+
+    /// Converts the latest value of a positive series into a normalized
+    /// 0..1 score relative to its own historical distribution.
+    ///
+    /// - around the historical mean -> ~0.5
+    /// - above the mean -> toward 1.0
+    /// - below the mean -> toward 0.0
+    #[inline]
+    fn relative_component(values: &[f64]) -> f64 {
+        let finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
+
+        if finite.len() < 2 {
+            return 0.5;
         }
+
+        let mean = finite.iter().sum::<f64>() / finite.len() as f64;
+        let var = finite
+            .iter()
+            .map(|v| {
+                let d = *v - mean;
+                d * d
+            })
+            .sum::<f64>()
+            / finite.len() as f64;
+
+        let std = var.sqrt();
+        if std <= 1e-12 {
+            return 0.5;
+        }
+
+        let last = *finite.last().unwrap();
+        let z = (last - mean) / std;
+
+        // Keep it smooth and centered.
+        (0.5 + 0.5 * (z / 2.0).tanh()).clamp(0.0, 1.0)
     }
 }
 
@@ -61,31 +92,23 @@ impl Score for VolatilityScore {
     }
 
     fn compute(&mut self, ctx: Context) -> ValueMap {
-        let regime_vol = ctx.regime().volatility;
+        let regime_vol = Self::clamp01(ctx.regime().volatility);
 
-        // Use the latest finite ATR normalization.
         let atr = ctx.indicator::<AvgTrueRange<14>>();
-        let atr_norm = math::last_finite(&atr.norm_atr).unwrap_or(0.0);
-
-        // Use the latest finite Bollinger width.
         let bb = ctx.indicator::<BollingerBands<20, 2>>();
-        let bb_width = math::last_finite(&bb.width).unwrap_or(0.0);
 
-        // Convert both positive volatility proxies into [0, 1].
-        let atr_component = Self::normalize_positive(atr_norm, 80.0);
-        let bb_component = Self::normalize_positive(bb_width, 25.0);
+        let atr_component = Self::relative_component(&atr.norm_atr);
+        let bb_component = Self::relative_component(&bb.width);
 
-        // Blend the three sources.
-        //
-        // Regime gets the most weight because it is already a higher-level summary.
         let volatility =
-            (atr_component * 0.35 + bb_component * 0.25 + regime_vol * 0.40).clamp(0.0, 1.0);
+            (atr_component * 0.40 + bb_component * 0.35 + regime_vol * 0.25).clamp(0.0, 1.0);
 
-        // Confidence is higher when the components agree.
-        let spread = (atr_component - bb_component)
-            .abs()
-            .max((volatility - regime_vol).abs());
-        let confidence = (1.0 - spread).clamp(0.0, 1.0);
+        let disagreement = ((atr_component - bb_component).abs()
+            + (atr_component - regime_vol).abs()
+            + (bb_component - regime_vol).abs())
+            / 3.0;
+
+        let confidence = (1.0 - disagreement).clamp(0.0, 1.0);
 
         self.volatility = volatility;
         self.confidence = confidence;

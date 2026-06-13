@@ -58,33 +58,27 @@ impl Score for ParticipationScore {
 
     fn compute(&mut self, ctx: Context) -> ValueMap {
         let regime = ctx.regime();
-
         let rvol = ctx.indicator::<RelativeVolume<20>>();
 
-        // Use a short recent average so the score is less noisy than a single last value.
         let rvol_mean = math::last_finite_mean(&rvol.values, 3).unwrap_or(1.0);
-
-        let rvol_participation = math::sigmoid((rvol_mean - 1.0) * 2.5).clamp(0.0, 1.0);
+        let rvol_signal = (rvol_mean - 1.0).clamp(-1.0, 1.0);
+        let rvol_participation = 0.5 + 0.5 * rvol_signal;
 
         let regime_participation = regime.participation.clamp(0.0, 1.0);
 
-        // Small context boost:
-        // active trending / structured markets usually have more meaningful participation
-        let context_boost = (regime.trend.abs() * 0.15
-            + regime.structure.abs() * 0.10
-            + (1.0 - regime.volatility).clamp(0.0, 1.0) * 0.10)
-            .clamp(0.0, 0.35);
+        let context_mod = (1.0 + 0.10 * regime.trend.abs() + 0.05 * regime.structure.abs()
+            - 0.10 * regime.volatility)
+            .clamp(0.75, 1.15);
 
-        // Final participation estimate.
-        let participation =
-            (regime_participation * 0.55 + rvol_participation * 0.45 + context_boost)
-                .clamp(0.0, 1.0);
+        let participation = (0.65 * rvol_participation + 0.35 * regime_participation) * context_mod;
 
-        // Confidence reflects how clearly participation is showing up.
-        // Stronger RVOL deviation from baseline means clearer participation.
-        let rvol_strength = ((rvol_mean - 1.0).abs() / 2.0).clamp(0.0, 1.0);
+        let participation = participation.clamp(0.0, 1.0);
 
-        let confidence = (regime_participation * 0.50 + rvol_strength * 0.50).clamp(0.0, 1.0);
+        let agreement = 1.0 - (rvol_participation - regime_participation).abs();
+
+        let stability = (1.0 - regime.volatility).clamp(0.0, 1.0);
+
+        let confidence = (0.7 * agreement + 0.3 * stability).clamp(0.0, 1.0);
 
         self.participation = participation;
         self.confidence = confidence;

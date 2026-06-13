@@ -47,6 +47,7 @@ impl StrengthScore {
             computed: false,
         }
     }
+
     #[inline]
     fn normalize_ratio(x: f64, scale: f64) -> f64 {
         if !x.is_finite() || !scale.is_finite() || scale.abs() <= 1e-12 {
@@ -54,6 +55,40 @@ impl StrengthScore {
         }
 
         (x.abs() * scale).tanh().clamp(0.0, 1.0)
+    }
+
+    #[inline]
+    fn mean(values: &[f64]) -> f64 {
+        let mut sum = 0.0;
+        let mut count = 0usize;
+
+        for &v in values {
+            if v.is_finite() {
+                sum += v;
+                count += 1;
+            }
+        }
+
+        if count == 0 { 0.0 } else { sum / count as f64 }
+    }
+
+    #[inline]
+    fn spread(values: &[f64]) -> f64 {
+        let mut min = f64::INFINITY;
+        let mut max = f64::NEG_INFINITY;
+
+        for &v in values {
+            if v.is_finite() {
+                min = min.min(v);
+                max = max.max(v);
+            }
+        }
+
+        if !min.is_finite() || !max.is_finite() {
+            0.0
+        } else {
+            (max - min).clamp(0.0, 1.0)
+        }
     }
 }
 
@@ -80,12 +115,15 @@ impl Score for StrengthScore {
             .abs()
             .max(1e-12);
 
-        let trend_anchor = (trend.direction.abs() * trend.confidence).clamp(0.0, 1.0);
+        // Pure magnitude inputs, no confidence mixed in here.
+        let trend_mag = trend.direction.abs().clamp(0.0, 1.0);
+        let regime_trend = regime.trend.abs().clamp(0.0, 1.0);
 
         let ema_distance = Self::normalize_ratio(
             math::last_finite(&ema.distance).unwrap_or(0.0),
             25.0 / close,
         );
+
         let ema_slope =
             Self::normalize_ratio(math::last_finite(&ema.slope).unwrap_or(0.0), 50.0 / close);
 
@@ -98,26 +136,29 @@ impl Score for StrengthScore {
 
         let efficiency = math::last_finite(&er.smooth).unwrap_or(0.0).clamp(0.0, 1.0);
 
-        let regime_trend = regime.trend.abs().clamp(0.0, 1.0);
+        let trend_component = 0.55 * trend_mag + 0.45 * regime_trend;
 
-        // weighted toward directionality + structure + momentum
-        self.strength = (0.28 * trend_anchor
-            + 0.18 * ema_distance
-            + 0.14 * ema_slope
-            + 0.16 * roc_strength
-            + 0.16 * structure
-            + 0.08 * efficiency)
-            .clamp(0.0, 1.0);
+        let impulse_component = 0.45 * roc_strength + 0.30 * ema_slope + 0.25 * ema_distance;
 
-        // how trustworthy the strength estimate is
-        self.confidence = (0.40 * trend.confidence.clamp(0.0, 1.0)
-            + 0.20 * regime_trend
-            + 0.20 * structure
-            + 0.20 * efficiency)
-            .clamp(0.0, 1.0);
+        let structure_component = 0.60 * structure + 0.40 * efficiency;
 
-        // Optional small boost if the regime itself is strongly trending.
-        self.strength = (self.strength * (0.85 + 0.15 * regime_trend)).clamp(0.0, 1.0);
+        self.strength =
+            (0.38 * trend_component + 0.32 * impulse_component + 0.30 * structure_component)
+                .clamp(0.0, 1.0);
+
+        let conf_values = [
+            trend.confidence.clamp(0.0, 1.0),
+            structure,
+            efficiency,
+            regime_trend,
+            1.0 - (trend_mag - regime_trend).abs(),
+        ];
+
+        let conf_base = Self::mean(&conf_values);
+        let agreement =
+            1.0 - Self::spread(&[trend_component, impulse_component, structure_component]);
+
+        self.confidence = (conf_base * (0.60 + 0.40 * agreement)).clamp(0.0, 1.0);
 
         self.computed = true;
 
