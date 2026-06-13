@@ -58,9 +58,9 @@ impl Evaluator {
                 self.engine.reset();
 
                 results.push(MetricInput { score, target });
-            }
 
-            span.pb_inc(1);
+                span.pb_inc(1);
+            }
 
             results
         });
@@ -71,9 +71,9 @@ impl Evaluator {
             for metric in self.metrics.values() {
                 let metric_result = metric.compute(&inputs);
                 result.merge(metric_result);
-            }
 
-            span.pb_inc(1);
+                span.pb_inc(1);
+            }
 
             result
         });
