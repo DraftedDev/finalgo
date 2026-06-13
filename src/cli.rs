@@ -129,7 +129,7 @@ impl Cli {
             })
             .await;
 
-        let mut eval = eval::build();
+        let mut eval = eval::build(args.stats);
         let result = eval.eval(fetched);
 
         tracing::info!("[######################### EVAL #########################]\n{result}");
@@ -157,6 +157,9 @@ pub struct RunArgs {
 /// Arguments for the eval command.
 #[derive(Clone, Debug, Parser)]
 pub struct EvalArgs {
+    /// Should the evaluator include statistics for every registered score.
+    #[arg(long = "stats", short = 's')]
+    pub stats: bool,
     /// The end date to use.
     pub end: String,
     /// The sample count to use.

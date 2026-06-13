@@ -159,6 +159,10 @@ impl ValueMap {
             self.add(key, value);
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Value)> {
+        self.fields.iter()
+    }
 }
 
 impl Display for ValueMap {

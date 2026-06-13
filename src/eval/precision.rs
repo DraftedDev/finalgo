@@ -7,31 +7,31 @@ use crate::utils::{Value, ValueMap};
 pub struct PrecisionMetric;
 
 impl PrecisionMetric {
-    /// Precision of correctly predicted LONG trades.
+    /// Precision of LONG predictions.
     ///
     /// ```text
-    /// true_long / predicted_long
+    /// correct_long / predicted_long
     /// ```
     pub const LONG_PRECISION_KEY: &str = "precision_long";
 
-    /// Precision of correctly predicted SHORT trades.
+    /// Precision of SHORT predictions.
     ///
     /// ```text
-    /// true_short / predicted_short
+    /// correct_short / predicted_short
     /// ```
     pub const SHORT_PRECISION_KEY: &str = "precision_short";
 
-    /// Precision of correctly predicted NEUTRAL trades.
+    /// Precision of NEUTRAL predictions.
     ///
     /// ```text
-    /// true_neutral / predicted_neutral
+    /// correct_neutral / predicted_neutral
     /// ```
     pub const NEUTRAL_PRECISION_KEY: &str = "precision_neutral";
 
-    /// Overall classification precision across all predictions.
+    /// Overall accuracy across all predictions.
     ///
     /// ```text
-    /// (true_long + true_short + true_neutral) / total_predictions
+    /// (correct_long + correct_short + correct_neutral) / total_predictions
     /// ```
     pub const OVERALL_PRECISION_KEY: &str = "precision_overall";
 
@@ -44,14 +44,23 @@ impl PrecisionMetric {
     /// Number of predictions classified as NEUTRAL.
     pub const PRED_NEUTRAL_KEY: &str = "precision_predicted_neutral";
 
-    /// Number of correct LONG predictions.
-    pub const TRUE_LONG_KEY: &str = "precision_true_long";
+    /// Number of correctly predicted LONG samples.
+    pub const CORRECT_LONG_KEY: &str = "precision_correct_long";
 
-    /// Number of correct SHORT predictions.
-    pub const TRUE_SHORT_KEY: &str = "precision_true_short";
+    /// Number of correctly predicted SHORT samples.
+    pub const CORRECT_SHORT_KEY: &str = "precision_correct_short";
 
-    /// Number of correct NEUTRAL predictions.
-    pub const TRUE_NEUTRAL_KEY: &str = "precision_true_neutral";
+    /// Number of correctly predicted NEUTRAL samples.
+    pub const CORRECT_NEUTRAL_KEY: &str = "precision_correct_neutral";
+
+    /// Number of target LONG samples.
+    pub const TARGET_LONG_KEY: &str = "precision_target_long";
+
+    /// Number of target SHORT samples.
+    pub const TARGET_SHORT_KEY: &str = "precision_target_short";
+
+    /// Number of target NEUTRAL samples.
+    pub const TARGET_NEUTRAL_KEY: &str = "precision_target_neutral";
 
     #[inline]
     fn target_decision(target: &StockData, dead_zone: f64) -> &'static str {
@@ -108,9 +117,13 @@ impl Metric for PrecisionMetric {
         let mut predicted_short = 0usize;
         let mut predicted_neutral = 0usize;
 
-        let mut true_long = 0usize;
-        let mut true_short = 0usize;
-        let mut true_neutral = 0usize;
+        let mut correct_long = 0usize;
+        let mut correct_short = 0usize;
+        let mut correct_neutral = 0usize;
+
+        let mut target_long = 0usize;
+        let mut target_short = 0usize;
+        let mut target_neutral = 0usize;
 
         for input in result {
             let pred = Self::predicted_decision(&input.score);
@@ -123,11 +136,18 @@ impl Metric for PrecisionMetric {
                 _ => unreachable!(),
             }
 
+            match target {
+                "LONG" => target_long += 1,
+                "SHORT" => target_short += 1,
+                "NEUTRAL" => target_neutral += 1,
+                _ => unreachable!(),
+            }
+
             if pred == target {
                 match pred {
-                    "LONG" => true_long += 1,
-                    "SHORT" => true_short += 1,
-                    "NEUTRAL" => true_neutral += 1,
+                    "LONG" => correct_long += 1,
+                    "SHORT" => correct_short += 1,
+                    "NEUTRAL" => correct_neutral += 1,
                     _ => unreachable!(),
                 }
             }
@@ -136,25 +156,25 @@ impl Metric for PrecisionMetric {
         let total = result.len();
 
         let long_precision = if predicted_long > 0 {
-            true_long as f64 / predicted_long as f64
+            correct_long as f64 / predicted_long as f64
         } else {
             0.0
         };
 
         let short_precision = if predicted_short > 0 {
-            true_short as f64 / predicted_short as f64
+            correct_short as f64 / predicted_short as f64
         } else {
             0.0
         };
 
         let neutral_precision = if predicted_neutral > 0 {
-            true_neutral as f64 / predicted_neutral as f64
+            correct_neutral as f64 / predicted_neutral as f64
         } else {
             0.0
         };
 
         let overall_precision = if total > 0 {
-            (true_long + true_short + true_neutral) as f64 / total as f64
+            (correct_long + correct_short + correct_neutral) as f64 / total as f64
         } else {
             0.0
         };
@@ -170,11 +190,17 @@ impl Metric for PrecisionMetric {
                 Self::OVERALL_PRECISION_KEY,
                 Value::Percent(overall_precision),
             )
-            .with(Self::PRED_LONG_KEY, predicted_long as i64)
-            .with(Self::PRED_SHORT_KEY, predicted_short as i64)
-            .with(Self::PRED_NEUTRAL_KEY, predicted_neutral as i64)
-            .with(Self::TRUE_LONG_KEY, true_long as i64)
-            .with(Self::TRUE_SHORT_KEY, true_short as i64)
-            .with(Self::TRUE_NEUTRAL_KEY, true_neutral as i64)
+            .with(Self::PRED_LONG_KEY, Value::Int(predicted_long as i64))
+            .with(Self::PRED_SHORT_KEY, Value::Int(predicted_short as i64))
+            .with(Self::PRED_NEUTRAL_KEY, Value::Int(predicted_neutral as i64))
+            .with(Self::CORRECT_LONG_KEY, Value::Int(correct_long as i64))
+            .with(Self::CORRECT_SHORT_KEY, Value::Int(correct_short as i64))
+            .with(
+                Self::CORRECT_NEUTRAL_KEY,
+                Value::Int(correct_neutral as i64),
+            )
+            .with(Self::TARGET_LONG_KEY, Value::Int(target_long as i64))
+            .with(Self::TARGET_SHORT_KEY, Value::Int(target_short as i64))
+            .with(Self::TARGET_NEUTRAL_KEY, Value::Int(target_neutral as i64))
     }
 }
