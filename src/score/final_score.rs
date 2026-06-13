@@ -33,6 +33,11 @@ impl FinalScore {
             computed: false,
         }
     }
+
+    #[inline]
+    fn centered(x: f64) -> f64 {
+        x - 0.5
+    }
 }
 
 impl Score for FinalScore {
@@ -47,43 +52,41 @@ impl Score for FinalScore {
         let quality = ctx.score::<QualityScore>();
         let participation = ctx.score::<ParticipationScore>();
 
-        let direction = trend.direction; // [-1, 1]
-        let trend_conf = trend.confidence;
+        let direction = trend.direction.clamp(-1.0, 1.0);
 
-        let strength_val = strength.strength; // [0, 1]
-        let strength_conf = strength.confidence;
+        let strength_val = strength.strength.clamp(0.0, 1.0);
+        let strength_conf = strength.confidence.clamp(0.0, 1.0);
 
-        let vol = volatility.volatility; // [0, 1]
-        let vol_conf = volatility.confidence;
+        let vol = volatility.volatility.clamp(0.0, 1.0);
 
-        let qual = quality.quality; // [0, 1]
-        let qual_conf = quality.confidence;
+        let qual = quality.quality.clamp(0.0, 1.0);
+        let qual_conf = quality.confidence.clamp(0.0, 1.0);
 
-        let part = participation.participation; // [0, 1]
-        let part_conf = participation.confidence;
+        let part = participation.participation.clamp(0.0, 1.0);
+        let part_conf = participation.confidence.clamp(0.0, 1.0);
 
-        let volatility_penalty = 1.0 - (vol * 0.6);
-        let structure_boost = (qual * 0.5 + strength_val * 0.5).clamp(0.0, 1.0);
-        let participation_boost = part.clamp(0.0, 1.0);
+        let trend_conf = trend.confidence.clamp(0.0, 1.0);
 
-        let raw_score = direction
-            * strength_val
-            * volatility_penalty
-            * structure_boost
-            * (0.5 + participation_boost * 0.5);
+        let gain = 1.0
+            + 0.35 * Self::centered(strength_val)
+            + 0.25 * Self::centered(qual)
+            + 0.15 * Self::centered(part)
+            - 0.30 * Self::centered(vol);
 
-        let score = raw_score.clamp(-1.0, 1.0);
+        let gain = gain.clamp(0.60, 1.60);
 
-        let confidence = (trend_conf * 0.35
-            + strength_conf * 0.25
-            + vol_conf * 0.20
-            + qual_conf * 0.10
-            + part_conf * 0.10)
+        let score = (direction * gain).clamp(-1.0, 1.0);
+
+        let confidence = (trend_conf * 0.30
+            + strength_conf * 0.20
+            + qual_conf * 0.20
+            + part_conf * 0.15
+            + (1.0 - vol) * 0.15)
             .clamp(0.0, 1.0);
 
-        let decision = if score > 0.25 {
+        let decision = if score >= 0.18 {
             "LONG"
-        } else if score < -0.25 {
+        } else if score <= -0.18 {
             "SHORT"
         } else {
             "NEUTRAL"
