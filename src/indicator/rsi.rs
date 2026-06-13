@@ -52,7 +52,7 @@ impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
 }
 
 impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("rsi-{}", PERIOD)
     }
 

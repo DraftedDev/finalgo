@@ -44,7 +44,7 @@ impl QualityScore {
 }
 
 impl Score for QualityScore {
-    fn name(&self) -> String {
+    fn name() -> String {
         "quality".to_string()
     }
 

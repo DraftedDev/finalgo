@@ -131,7 +131,7 @@ impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
 }
 
 impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, RIGHT> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("swing-{}-{}", LEFT, RIGHT)
     }
 

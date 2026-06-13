@@ -53,7 +53,7 @@ impl TrendScore {
 }
 
 impl Score for TrendScore {
-    fn name(&self) -> String {
+    fn name() -> String {
         "trend".to_string()
     }
 

@@ -58,7 +58,7 @@ impl StrengthScore {
 }
 
 impl Score for StrengthScore {
-    fn name(&self) -> String {
+    fn name() -> String {
         "strength".to_string()
     }
 

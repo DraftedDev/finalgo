@@ -16,7 +16,6 @@ use crate::score::strength::StrengthScore;
 use crate::score::trend::TrendScore;
 use crate::score::volatility::VolatilityScore;
 use crate::utils::{FastMap, ValueMap};
-use std::any::TypeId;
 
 pub fn build() -> Engine {
     let mut engine = Engine::new();
@@ -44,11 +43,11 @@ pub fn build() -> Engine {
 pub struct Engine {
     regime: Option<Regime>,
 
-    indicators: FastMap<TypeId, Box<dyn Indicator>>,
-    run_indicators: Vec<TypeId>,
+    indicators: FastMap<String, Box<dyn Indicator>>,
+    run_indicators: Vec<String>,
 
-    scores: FastMap<TypeId, Box<dyn Score>>,
-    run_scores: Vec<TypeId>,
+    scores: FastMap<String, Box<dyn Score>>,
+    run_scores: Vec<String>,
 }
 
 impl Engine {
@@ -68,25 +67,25 @@ impl Engine {
     }
 
     pub fn add_indicator<I: Indicator>(&mut self, indicator: I) {
-        let id = TypeId::of::<I>();
+        let name = I::name();
 
-        if self.indicators.contains_key(&id) {
+        if self.indicators.contains_key(&name) {
             panic!("Indicator already registered");
         }
 
-        self.indicators.insert(id, Box::new(indicator));
-        self.run_indicators.push(id);
+        self.indicators.insert(name.clone(), Box::new(indicator));
+        self.run_indicators.push(name);
     }
 
     pub fn add_score<S: Score>(&mut self, score: S) {
-        let id = TypeId::of::<S>();
+        let name = S::name();
 
-        if self.scores.contains_key(&id) {
+        if self.scores.contains_key(&name) {
             panic!("Score already registered");
         }
 
-        self.scores.insert(id, Box::new(score));
-        self.run_scores.push(id);
+        self.scores.insert(name.clone(), Box::new(score));
+        self.run_scores.push(name);
     }
 
     #[tracing::instrument(skip_all)]
@@ -101,9 +100,8 @@ impl Engine {
             tracing::info!("Building {} indicators...", self.indicators.len());
         }
 
-        for id in &self.run_indicators {
-            let mut indicator = self.indicators.remove(id).unwrap();
-            let name = indicator.name();
+        for name in &self.run_indicators {
+            let mut indicator = self.indicators.remove(name).unwrap();
 
             if traces {
                 tracing::info!("Computing indicator '{name}'...");
@@ -115,7 +113,7 @@ impl Engine {
 
             indicator.compute(self.context(data));
 
-            self.indicators.insert(*id, indicator);
+            self.indicators.insert(name.clone(), indicator);
         }
 
         if traces {
@@ -130,9 +128,8 @@ impl Engine {
 
         let mut result = ValueMap::new();
 
-        for id in &self.run_scores {
-            let mut score = self.scores.remove(id).unwrap();
-            let name = score.name();
+        for name in &self.run_scores {
+            let mut score = self.scores.remove(name).unwrap();
 
             if traces {
                 tracing::info!("Computing score '{name}'...");
@@ -145,7 +142,7 @@ impl Engine {
             let new_result = score.compute(self.context(data));
 
             result.merge(new_result);
-            self.scores.insert(*id, score);
+            self.scores.insert(name.clone(), score);
         }
 
         result
@@ -177,31 +174,35 @@ impl<'a> Context<'a> {
     }
 
     pub fn indicator<I: Indicator>(&self) -> &I {
+        let name = I::name();
+
         let ind = self
             .engine
             .indicators
-            .get(&TypeId::of::<I>())
-            .expect("Indicator not found")
+            .get(&name)
+            .unwrap_or_else(|| panic!("Indicator {name} not found"))
             .as_any()
             .downcast_ref::<I>()
             .unwrap();
 
-        assert!(ind.is_computed(), "Indicator {} not computed", ind.name());
+        assert!(ind.is_computed(), "Indicator {name} not computed");
 
         ind
     }
 
     pub fn score<S: Score>(&self) -> &S {
+        let name = S::name();
+
         let score = self
             .engine
             .scores
-            .get(&TypeId::of::<S>())
-            .expect("Score not found")
+            .get(&name)
+            .unwrap_or_else(|| panic!("Score {name} not found"))
             .as_any()
             .downcast_ref::<S>()
             .unwrap();
 
-        assert!(score.is_computed(), "Score {} not computed", score.name());
+        assert!(score.is_computed(), "Score {name} not computed");
 
         score
     }

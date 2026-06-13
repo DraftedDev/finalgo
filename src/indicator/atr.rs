@@ -48,7 +48,7 @@ impl<const PERIOD: usize> AvgTrueRange<PERIOD> {
 }
 
 impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("atr-{}", PERIOD)
     }
 

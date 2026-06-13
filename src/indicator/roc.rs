@@ -58,7 +58,7 @@ impl<const PERIOD: usize> RateOfChange<PERIOD> {
 }
 
 impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("roc-{}", PERIOD)
     }
 

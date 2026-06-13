@@ -31,7 +31,9 @@ pub mod swing;
 /// A market indicator that may depend on OHLCV data or other indicators.
 pub trait Indicator: 'static {
     /// The name of the indicator.
-    fn name(&self) -> String;
+    fn name() -> String
+    where
+        Self: Sized;
 
     /// Computes the indicator.
     fn compute(&mut self, ctx: Context);

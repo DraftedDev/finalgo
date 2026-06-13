@@ -88,7 +88,7 @@ impl<const PERIOD: usize, const STD_MULTI: i32> BollingerBands<PERIOD, STD_MULTI
 }
 
 impl<const PERIOD: usize, const STD_MULTI: i32> Indicator for BollingerBands<PERIOD, STD_MULTI> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("bollinger-{}-{}", PERIOD, STD_MULTI)
     }
 

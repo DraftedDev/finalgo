@@ -36,7 +36,7 @@ impl<const PERIOD: usize> RelativeVolume<PERIOD> {
 }
 
 impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("rvol-{}", PERIOD)
     }
 

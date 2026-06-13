@@ -52,7 +52,7 @@ impl ParticipationScore {
 }
 
 impl Score for ParticipationScore {
-    fn name(&self) -> String {
+    fn name() -> String {
         "participation".to_string()
     }
 

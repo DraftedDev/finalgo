@@ -56,7 +56,7 @@ impl VolatilityScore {
 }
 
 impl Score for VolatilityScore {
-    fn name(&self) -> String {
+    fn name() -> String {
         "volatility".to_string()
     }
 

@@ -51,7 +51,7 @@ impl<const PERIOD: usize, const SMOOTH: usize> Stochastic<PERIOD, SMOOTH> {
 }
 
 impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, SMOOTH> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("stoch-{}-{}", PERIOD, SMOOTH)
     }
 

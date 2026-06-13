@@ -41,7 +41,7 @@ impl FinalScore {
 }
 
 impl Score for FinalScore {
-    fn name(&self) -> String {
+    fn name() -> String {
         "final".to_string()
     }
 

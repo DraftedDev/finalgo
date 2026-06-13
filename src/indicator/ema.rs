@@ -55,7 +55,7 @@ impl<const PERIOD: usize> ExpMovAvg<PERIOD> {
 }
 
 impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("ema-{}", PERIOD)
     }
 

@@ -97,7 +97,7 @@ impl<const PERIOD: usize, const SMOOTH: usize> EfficiencyRatio<PERIOD, SMOOTH> {
 }
 
 impl<const PERIOD: usize, const SMOOTH: usize> Indicator for EfficiencyRatio<PERIOD, SMOOTH> {
-    fn name(&self) -> String {
+    fn name() -> String {
         format!("er-{}", PERIOD)
     }
 

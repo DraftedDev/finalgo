@@ -12,7 +12,9 @@ pub mod volatility;
 /// A score based on indicators and optionally other scores if needed.
 pub trait Score: 'static {
     /// The name of the score.
-    fn name(&self) -> String;
+    fn name() -> String
+    where
+        Self: Sized;
 
     /// Computes the score.
     fn compute(&mut self, ctx: Context) -> ValueMap;
