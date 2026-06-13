@@ -1,11 +1,24 @@
 use crate::data::StockData;
 use crate::engine::Engine;
+use crate::eval::loss::LossMetric;
 use crate::eval::metric::{Metric, MetricInput};
+use crate::eval::precision::PrecisionMetric;
 use crate::utils::{FastMap, ValueMap};
 use crate::{engine, utils};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+pub mod loss;
 pub mod metric;
+pub mod precision;
+
+pub fn build() -> Evaluator {
+    let mut evaluator = Evaluator::new();
+
+    evaluator.add_metric(PrecisionMetric);
+    evaluator.add_metric(LossMetric);
+
+    evaluator
+}
 
 pub struct Evaluator {
     engine: Engine,
@@ -20,14 +33,14 @@ impl Evaluator {
         }
     }
 
-    pub fn add_metric(&mut self, metric: Box<dyn Metric>) {
+    pub fn add_metric(&mut self, metric: impl Metric) {
         let name = metric.name();
 
         if self.metrics.contains_key(&name) {
             panic!("Metric already initialized");
         }
 
-        self.metrics.insert(name, metric);
+        self.metrics.insert(name, Box::new(metric));
     }
 
     pub fn eval(&mut self, samples: Vec<(StockData, StockData)>) -> ValueMap {

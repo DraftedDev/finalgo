@@ -15,12 +15,13 @@ pub struct StockData {
 }
 
 impl StockData {
-    pub async fn fetch(database: &Database, key: DataKey) -> Self {
+    pub async fn fetch(database: &mut Database, key: DataKey) -> Self {
         if let Some(data) = database.get(&key) {
             data
         } else {
+            tracing::info!("StockData not found in database. Fetching from Yahoo...");
             let data = Self::fetch_yahoo(&key).await;
-            database.set(&key, &data);
+            database.set(key, data.clone());
             data
         }
     }

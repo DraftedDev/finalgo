@@ -1,8 +1,7 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_CANDLE_LOOK_BACK};
 use crate::data::{DataKey, StockData};
 use crate::database::Database;
-use crate::eval::Evaluator;
-use crate::{engine, utils};
+use crate::{engine, eval, utils};
 use clap::Parser;
 use tokio::task::JoinSet;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
@@ -17,10 +16,10 @@ pub struct Cli {
 
 impl Cli {
     pub async fn run(&self, args: RunArgs) {
-        let database = Database::new();
+        let mut database = Database::new();
 
         let data = StockData::fetch(
-            &database,
+            &mut database,
             DataKey {
                 end: args.target,
                 size: CANDLE_LOOK_BACK,
@@ -39,7 +38,8 @@ impl Cli {
     pub async fn eval(&self, args: EvalArgs) {
         let end = utils::parse_naive_date(&args.end);
 
-        let mut t = utils::subtract_naive_date(end, (args.samples as i64 + 5) as usize);
+        let warmup = args.samples.saturating_add(5);
+        let mut t = utils::subtract_naive_date(end, warmup);
 
         tracing::info!(
             "Collecting {} samples of {} tickers each...",
@@ -47,16 +47,15 @@ impl Cli {
             args.tickers.len()
         );
 
-        let mut data = Vec::with_capacity(args.samples);
+        let mut data = Vec::with_capacity(args.samples * args.tickers.len());
 
-        for _ in 1..=args.samples {
-            let target_end = utils::add_naive_date(t, 4);
+        for _ in 0..args.samples {
+            let target_end = utils::add_naive_date(t, 1);
 
             for ticker in &args.tickers {
                 data.push((t, target_end, ticker.clone()));
             }
 
-            // move forward by one trading day
             t = utils::add_naive_date(t, 1);
         }
 
@@ -65,15 +64,16 @@ impl Cli {
                 let database = Database::new();
                 let mut fetched = Vec::with_capacity(data.len());
 
-                for chunk in data.chunks(FETCH_CHUNK_SIZE).map(|chunk| chunk.to_vec()) {
+                for chunk in data.chunks(FETCH_CHUNK_SIZE) {
                     let mut set = JoinSet::new();
 
-                    for (t, t_target, ticker) in chunk {
-                        let database = database.clone();
+                    for (t, t_target, ticker) in chunk.iter().cloned() {
+                        let mut database = database.clone();
                         let span = span.clone();
+
                         set.spawn(async move {
-                            let data = StockData::fetch(
-                                &database,
+                            let predict = StockData::fetch(
+                                &mut database,
                                 DataKey {
                                     end: utils::format_naive_date(t),
                                     size: CANDLE_LOOK_BACK,
@@ -82,8 +82,8 @@ impl Cli {
                             )
                             .await;
 
-                            let target = StockData::fetch(
-                                &database,
+                            let target_raw = StockData::fetch(
+                                &mut database,
                                 DataKey {
                                     end: utils::format_naive_date(t_target),
                                     size: TARGET_CANDLE_LOOK_BACK,
@@ -92,13 +92,35 @@ impl Cli {
                             )
                             .await;
 
+                            assert!(
+                                !target_raw.opens.is_empty(),
+                                "Target dataset must contain at least 1 candle"
+                            );
+
+                            let i = target_raw.opens.len() - 1;
+
+                            let target = StockData {
+                                highs: vec![target_raw.highs[i]],
+                                lows: vec![target_raw.lows[i]],
+                                opens: vec![target_raw.opens[i]],
+                                closes: vec![target_raw.closes[i]],
+                                volumes: vec![target_raw.volumes[i]],
+                            };
+
+                            assert_eq!(target.volumes.len(), 1, "Target vols must have length 1");
+                            assert_eq!(target.closes.len(), 1, "Target closes must have length 1");
+                            assert_eq!(target.opens.len(), 1, "Target opens must have length 1");
+                            assert_eq!(target.highs.len(), 1, "Target highs must have length 1");
+                            assert_eq!(target.lows.len(), 1, "Target lows must have length 1");
+
                             span.pb_inc(1);
 
-                            (data, target)
+                            (predict, target)
                         });
                     }
 
-                    for (predict, target) in set.join_all().await {
+                    while let Some(res) = set.join_next().await {
+                        let (predict, target) = res.expect("Fetch task failed");
                         fetched.push((predict, target));
                     }
                 }
@@ -107,7 +129,7 @@ impl Cli {
             })
             .await;
 
-        let mut eval = Evaluator::new();
+        let mut eval = eval::build();
         let result = eval.eval(fetched);
 
         tracing::info!("[######################### EVAL #########################]\n{result}");

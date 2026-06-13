@@ -41,14 +41,14 @@ impl Database {
         Self { database, env }
     }
 
-    pub fn set(&self, key: &DataKey, data: &StockData) {
+    pub fn set(&mut self, key: DataKey, data: StockData) {
         let mut txn = self
             .env
             .write_txn()
             .expect("Failed to acquire write handle");
 
         self.database
-            .put(&mut txn, key, data)
+            .put(&mut txn, &key, &data)
             .expect("Failed to put data");
 
         txn.commit().expect("Failed to commit write handle");

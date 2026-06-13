@@ -1,4 +1,3 @@
-use crate::utils;
 use indicatif::ProgressStyle;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -118,12 +117,14 @@ pub async fn with_progress_async<Fut: Future<Output = R>, R>(
 
 pub struct ValueMap {
     fields: FastMap<String, Value>,
+    order: Vec<String>,
 }
 
 impl ValueMap {
     pub fn new() -> Self {
         Self {
             fields: FastMap::with_capacity_and_hasher(16, Default::default()),
+            order: Vec::new(),
         }
     }
 
@@ -134,6 +135,7 @@ impl ValueMap {
             panic!("Field already set");
         }
 
+        self.order.push(key.clone());
         self.fields.insert(key, field.into());
     }
 
@@ -143,25 +145,32 @@ impl ValueMap {
     }
 
     pub fn get(&self, key: &str) -> &Value {
-        self.fields.get(key).expect("Failed to get field value")
+        self.fields
+            .get(key)
+            .unwrap_or_else(|| panic!("Failed to get field value '{key}'"))
     }
 
-    pub fn merge(&mut self, other: ValueMap) {
-        for (k, v) in other.fields {
-            self.add(k, v);
+    pub fn merge(&mut self, mut other: ValueMap) {
+        for key in other.order {
+            let value = other
+                .fields
+                .remove(&key)
+                .expect("Failed to get field value");
+            self.add(key, value);
         }
     }
 }
 
 impl Display for ValueMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut fields = self
-            .fields
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect::<Vec<_>>();
+        let mut fields = Vec::with_capacity(self.order.len());
 
-        fields.sort_by(|(a, _), (b, _)| a.to_lowercase().cmp(&b.to_lowercase()));
+        for key in &self.order {
+            fields.push((
+                key,
+                self.fields.get(key).expect("Failed to get field value"),
+            ));
+        }
 
         for (key, value) in fields {
             writeln!(f, "\t{key} : [ {value} ]")?;
@@ -173,22 +182,38 @@ impl Display for ValueMap {
 
 #[derive(Clone, Debug)]
 pub enum Value {
-    Num(f64),
+    Float(f64),
+    Percent(f64),
+    Int(i64),
     String(String),
 }
 
 impl Value {
-    pub fn as_num(&self) -> Option<f64> {
+    pub fn as_float(&self) -> f64 {
         match self {
-            Value::Num(n) => Some(*n),
-            Value::String(_) => None,
+            Value::Float(f) => *f,
+            _ => panic!("Value not a float"),
         }
     }
 
-    pub fn as_str(&self) -> Option<&str> {
+    pub fn as_percent(&self) -> f64 {
         match self {
-            Value::Num(_) => None,
-            Value::String(s) => Some(s.as_str()),
+            Value::Percent(p) => *p,
+            _ => panic!("Value not percentage"),
+        }
+    }
+
+    pub fn as_int(&self) -> i64 {
+        match self {
+            Value::Int(i) => *i,
+            _ => panic!("Value not int"),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Value::String(s) => s.as_str(),
+            _ => panic!("Value not string"),
         }
     }
 }
@@ -196,7 +221,9 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Num(n) => write!(f, "{}", round_to_two_decimals(*n)),
+            Value::Float(fl) => write!(f, "{}", round_to_two_decimals(*fl)),
+            Value::Percent(p) => write!(f, "{} %", round_to_two_decimals(*p) * 100.0),
+            Value::Int(i) => write!(f, "{}", i),
             Value::String(s) => write!(f, "{}", s),
         }
     }
@@ -204,7 +231,13 @@ impl Display for Value {
 
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
-        Value::Num(value)
+        Value::Float(value)
+    }
+}
+
+impl From<i64> for Value {
+    fn from(value: i64) -> Self {
+        Value::Int(value)
     }
 }
 

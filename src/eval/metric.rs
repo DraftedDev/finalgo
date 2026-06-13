@@ -1,7 +1,7 @@
 use crate::data::StockData;
 use crate::utils::ValueMap;
 
-pub trait Metric {
+pub trait Metric: 'static {
     fn name(&self) -> String;
     fn compute(&self, result: &[MetricInput]) -> ValueMap;
 }
