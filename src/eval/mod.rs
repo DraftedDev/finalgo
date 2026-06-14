@@ -65,7 +65,7 @@ impl Evaluator {
             results
         });
 
-        let result = utils::with_progress("Evaluating", inputs.len() as u64, |span| {
+        utils::with_progress("Evaluating", inputs.len() as u64, |span| {
             let mut result = ValueMap::new();
 
             for metric in self.metrics.values() {
@@ -76,8 +76,6 @@ impl Evaluator {
             }
 
             result
-        });
-
-        result
+        })
     }
 }
