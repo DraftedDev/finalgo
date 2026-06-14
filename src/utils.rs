@@ -200,6 +200,7 @@ impl Value {
         }
     }
 
+    #[allow(unused)]
     pub fn as_percent(&self) -> f64 {
         match self {
             Value::Percent(p) => *p,
@@ -207,6 +208,7 @@ impl Value {
         }
     }
 
+    #[allow(unused)]
     pub fn as_int(&self) -> i64 {
         match self {
             Value::Int(i) => *i,

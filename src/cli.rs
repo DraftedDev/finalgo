@@ -1,4 +1,4 @@
-use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_CANDLE_LOOK_BACK};
+use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataKey, StockData};
 use crate::database::Database;
 use crate::{engine, eval, utils};
@@ -50,7 +50,7 @@ impl Cli {
         let mut data = Vec::with_capacity(args.samples * args.tickers.len());
 
         for _ in 0..args.samples {
-            let target_end = utils::add_naive_date(t, 1);
+            let target_end = utils::add_naive_date(t, TARGET_HORIZON);
 
             for ticker in &args.tickers {
                 data.push((t, target_end, ticker.clone()));
@@ -82,36 +82,20 @@ impl Cli {
                             )
                             .await;
 
-                            let target_raw = StockData::fetch(
+                            let target = StockData::fetch(
                                 &mut database,
                                 DataKey {
                                     end: utils::format_naive_date(t_target),
-                                    size: TARGET_CANDLE_LOOK_BACK,
+                                    size: TARGET_HORIZON,
                                     ticker: ticker.clone(),
                                 },
                             )
                             .await;
 
                             assert!(
-                                !target_raw.opens.is_empty(),
+                                !target.opens.is_empty(),
                                 "Target dataset must contain at least 1 candle"
                             );
-
-                            let i = target_raw.opens.len() - 1;
-
-                            let target = StockData {
-                                highs: vec![target_raw.highs[i]],
-                                lows: vec![target_raw.lows[i]],
-                                opens: vec![target_raw.opens[i]],
-                                closes: vec![target_raw.closes[i]],
-                                volumes: vec![target_raw.volumes[i]],
-                            };
-
-                            assert_eq!(target.volumes.len(), 1, "Target vols must have length 1");
-                            assert_eq!(target.closes.len(), 1, "Target closes must have length 1");
-                            assert_eq!(target.opens.len(), 1, "Target opens must have length 1");
-                            assert_eq!(target.highs.len(), 1, "Target highs must have length 1");
-                            assert_eq!(target.lows.len(), 1, "Target lows must have length 1");
 
                             span.pb_inc(1);
 

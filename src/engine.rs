@@ -5,6 +5,7 @@ use crate::indicator::boll::BollingerBands;
 use crate::indicator::ema::ExpMovAvg;
 use crate::indicator::er::EfficiencyRatio;
 use crate::indicator::roc::RateOfChange;
+use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::rvol::RelativeVolume;
 use crate::indicator::swing::SwingStructure;
 use crate::regime::Regime;
@@ -23,12 +24,14 @@ pub fn build() -> Engine {
     engine.add_indicator(AvgTrueRange::<14>::new());
     engine.add_indicator(BollingerBands::<20, 2>::new());
     engine.add_indicator(BollingerBands::<30, 2>::new());
+    engine.add_indicator(ExpMovAvg::<100>::new());
     engine.add_indicator(ExpMovAvg::<600>::new());
     engine.add_indicator(RateOfChange::<10>::new());
     engine.add_indicator(EfficiencyRatio::<10, 3>::new());
     engine.add_indicator(SwingStructure::<5, 10>::new());
     engine.add_indicator(SwingStructure::<10, 10>::new());
     engine.add_indicator(RelativeVolume::<20>::new());
+    engine.add_indicator(RelStrengthIdx::<14>::new());
 
     engine.add_score(TrendScore::new());
     engine.add_score(StrengthScore::new());

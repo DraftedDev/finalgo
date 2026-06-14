@@ -82,13 +82,18 @@ impl LossMetric {
                 && !target.closes.is_empty()
                 && !target.highs.is_empty()
                 && !target.lows.is_empty(),
-            "Target StockData must contain one future candle"
+            "Target StockData must contain the 7-day window"
         );
 
         let open = target.opens[0];
-        let close = target.closes[0];
-        let high = target.highs[0];
-        let low = target.lows[0];
+        let close = target.closes[target.closes.len() - 1];
+
+        let high = target
+            .highs
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+        let low = target.lows.iter().cloned().fold(f64::INFINITY, f64::min);
 
         let raw_return = if open.abs() > 1e-12 {
             (close - open) / open
@@ -96,17 +101,21 @@ impl LossMetric {
             0.0
         };
         let range = (high - low).max(0.0);
-        let range_ratio = if open.abs() > 1e-12 {
-            range / open.abs()
-        } else {
-            0.0
-        };
         let body = (close - open).abs();
 
         let direction = (raw_return * 50.0).tanh().clamp(-1.0, 1.0);
         let strength = (raw_return.abs() * 50.0).tanh().clamp(0.0, 1.0);
 
-        let volatility = (range_ratio * 33.0).tanh().clamp(0.0, 1.0);
+        let mut daily_vol_sum = 0.0;
+        let days = target.highs.len().max(1);
+        for i in 0..days {
+            let open = target.opens[i].abs().max(1e-12);
+            let range = (target.highs[i] - target.lows[i]).max(0.0);
+            daily_vol_sum += range / open;
+        }
+        let avg_daily_range = daily_vol_sum / days as f64;
+
+        let volatility = (avg_daily_range * 66.0).tanh().clamp(0.0, 1.0);
 
         let quality = if range > 1e-12 {
             (body / range).clamp(0.0, 1.0)

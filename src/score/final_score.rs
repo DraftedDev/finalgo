@@ -78,21 +78,25 @@ impl Score for FinalScore {
         let signal_clarity = final_score.abs();
         let confidence = (base_confidence * 0.75 + signal_clarity * 0.25).clamp(0.0, 1.0);
 
-        let base_threshold = 0.25;
-        let confidence_discount = confidence * 0.15;
-        let dynamic_threshold = (base_threshold - confidence_discount).max(0.08);
+        let base_long_threshold = 0.12;
+        let base_short_threshold = -0.22;
 
-        let decision = if final_score > dynamic_threshold {
-            "LONG"
-        } else if final_score < -dynamic_threshold {
-            "SHORT"
+        let long_discount = self.confidence * 0.05;
+        let short_discount = self.confidence * 0.08;
+
+        let long_threshold = (base_long_threshold - long_discount).max(0.06);
+        let short_threshold = (base_short_threshold + short_discount).min(-0.12);
+
+        self.decision = if final_score > long_threshold {
+            "LONG".to_string()
+        } else if final_score < short_threshold {
+            "SHORT".to_string()
         } else {
-            "NEUTRAL"
+            "NEUTRAL".to_string()
         };
 
         self.score = final_score;
         self.confidence = confidence;
-        self.decision = decision.to_string();
         self.computed = true;
 
         ValueMap::new()

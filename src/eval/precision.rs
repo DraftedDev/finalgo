@@ -65,16 +65,12 @@ impl PrecisionMetric {
     #[inline]
     fn target_decision(target: &StockData, dead_zone: f64) -> &'static str {
         assert!(
-            !target.opens.is_empty(),
-            "Target opens must contain exactly one candle"
-        );
-        assert!(
-            !target.closes.is_empty(),
-            "Target closes must contain exactly one candle"
+            !target.opens.is_empty() && !target.closes.is_empty(),
+            "Target data must contain the 7-day window"
         );
 
         let open = target.opens[0];
-        let close = target.closes[0];
+        let close = target.closes[target.closes.len() - 1];
 
         assert!(open.is_finite(), "Target open must be finite");
         assert!(close.is_finite(), "Target close must be finite");
