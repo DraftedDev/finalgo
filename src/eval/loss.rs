@@ -10,57 +10,70 @@ use crate::utils::ValueMap;
 
 /// # Loss Metric
 ///
-/// Loss metric for trading scores.
+/// Evaluates the predictive accuracy of the scoring engine against actual market outcomes.
 pub struct LossMetric;
 
 impl LossMetric {
-    pub const DIRECTION_LOSS_KEY: &str = "loss_direction";
-    pub const STRENGTH_LOSS_KEY: &str = "loss_strength";
-    pub const QUALITY_LOSS_KEY: &str = "loss_quality";
-    pub const VOLATILITY_LOSS_KEY: &str = "loss_volatility";
-    pub const DECISION_LOSS_KEY: &str = "loss_decision";
-    pub const CALIBRATION_LOSS_KEY: &str = "loss_calibration";
-    pub const TOTAL_LOSS_KEY: &str = "loss_total";
+    pub const DIRECTION_LOSS_KEY: &'static str = "loss_direction";
+    pub const STRENGTH_LOSS_KEY: &'static str = "loss_strength";
+    pub const QUALITY_LOSS_KEY: &'static str = "loss_quality";
+    pub const VOLATILITY_LOSS_KEY: &'static str = "loss_volatility";
+    pub const DECISION_LOSS_KEY: &'static str = "loss_decision";
+    pub const CALIBRATION_LOSS_KEY: &'static str = "loss_calibration";
+    pub const TOTAL_LOSS_KEY: &'static str = "loss_total";
 
+    /// Base Mean Absolute Error for [-1.0, 1.0] bounded signals.
     #[inline]
     fn signed_loss(pred: f64, target: f64) -> f64 {
         if !pred.is_finite() || !target.is_finite() {
             return 1.0;
         }
-
         ((pred.clamp(-1.0, 1.0) - target.clamp(-1.0, 1.0)).abs() / 2.0).clamp(0.0, 1.0)
     }
 
+    /// Base Mean Absolute Error for [0.0, 1.0] bounded signals.
     #[inline]
     fn unsigned_loss(pred: f64, target: f64) -> f64 {
         if !pred.is_finite() || !target.is_finite() {
             return 1.0;
         }
-
         (pred.clamp(0.0, 1.0) - target.clamp(0.0, 1.0))
             .abs()
             .clamp(0.0, 1.0)
     }
 
+    /// Confidence-Weighted Signed Loss (Proper Scoring Rule)
+    /// High confidence errors are penalized much more heavily than low confidence errors.
     #[inline]
-    fn decision_from_str(s: &str) -> Decision {
-        match s.trim().to_ascii_uppercase().as_str() {
-            "LONG" => Decision::Long,
-            "SHORT" => Decision::Short,
-            _ => Decision::Neutral,
-        }
+    fn weighted_signed_loss(pred: f64, target: f64, pred_conf: f64) -> f64 {
+        let base_loss = Self::signed_loss(pred, target);
+        let conf_weight = 0.5 + 0.5 * pred_conf.clamp(0.0, 1.0);
+        (base_loss * conf_weight).clamp(0.0, 1.0)
     }
 
+    /// Confidence-Weighted Unsigned Loss
     #[inline]
-    fn decision_loss(pred: Decision, target: Decision) -> f64 {
-        match (pred, target) {
-            (Decision::Long, Decision::Long) => 0.0,
-            (Decision::Short, Decision::Short) => 0.0,
-            (Decision::Neutral, Decision::Neutral) => 0.0,
-            (Decision::Neutral, _) => 0.5,
-            (_, Decision::Neutral) => 0.5,
+    fn weighted_unsigned_loss(pred: f64, target: f64, pred_conf: f64) -> f64 {
+        let base_loss = Self::unsigned_loss(pred, target);
+        let conf_weight = 0.5 + 0.5 * pred_conf.clamp(0.0, 1.0);
+        (base_loss * conf_weight).clamp(0.0, 1.0)
+    }
+
+    /// Categorical decision loss weighted by prediction conviction.
+    #[inline]
+    fn decision_loss(pred: Decision, target: Decision, pred_conviction: f64) -> f64 {
+        let base_loss = match (pred, target) {
+            (Decision::Long, Decision::Long)
+            | (Decision::Short, Decision::Short)
+            | (Decision::Neutral, Decision::Neutral) => 0.0,
+
+            (Decision::Neutral, _) | (_, Decision::Neutral) => 0.5,
+
             _ => 1.0,
-        }
+        };
+
+        let conviction_multiplier = 0.5 + (pred_conviction.abs() * 0.5);
+        (base_loss * conviction_multiplier).clamp(0.0, 1.0)
     }
 
     fn target_from_stock(target: &StockData) -> TargetSample {
@@ -82,25 +95,21 @@ impl LossMetric {
         } else {
             0.0
         };
-
-        // Direction in [-1, 1]
-        let direction = (raw_return * 25.0).tanh().clamp(-1.0, 1.0);
-
-        // Magnitude in [0, 1]
-        let strength = (raw_return.abs() * 25.0).tanh().clamp(0.0, 1.0);
-
-        // Volatility in [0, 1] from candle range relative to price
         let range = (high - low).max(0.0);
         let range_ratio = if open.abs() > 1e-12 {
             range / open.abs()
         } else {
             0.0
         };
+        let body = (close - open).abs();
 
-        let volatility = (1.0 - (-25.0 * range_ratio).exp()).clamp(0.0, 1.0);
+        let direction = (raw_return * 50.0).tanh().clamp(-1.0, 1.0);
+        let strength = (raw_return.abs() * 50.0).tanh().clamp(0.0, 1.0);
+
+        let volatility = (range_ratio * 33.0).tanh().clamp(0.0, 1.0);
 
         let quality = if range > 1e-12 {
-            ((close - open).abs() / range).clamp(0.0, 1.0)
+            (body / range).clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -113,8 +122,12 @@ impl LossMetric {
             Decision::Neutral
         };
 
-        let confidence =
-            (0.45 * strength + 0.35 * quality + 0.20 * (1.0 - volatility)).clamp(0.0, 1.0);
+        let vol_penalty = if volatility > 0.8 && quality < 0.4 {
+            0.5
+        } else {
+            1.0
+        };
+        let confidence = ((strength * 0.5 + quality * 0.5) * vol_penalty).clamp(0.0, 1.0);
 
         TargetSample {
             direction,
@@ -161,39 +174,42 @@ impl Metric for LossMetric {
             let pred_strength_conf = sample.score.get(StrengthScore::CONFIDENCE_KEY).as_float();
 
             let pred_quality = sample.score.get(QualityScore::QUALITY_KEY).as_float();
-            let pred_quality_conf = sample.score.get(StrengthScore::CONFIDENCE_KEY).as_float();
+            let pred_quality_conf = sample.score.get(QualityScore::CONFIDENCE_KEY).as_float();
 
             let pred_volatility = sample.score.get(VolatilityScore::VOLATILITY_KEY).as_float();
             let pred_volatility_conf = sample.score.get(VolatilityScore::CONFIDENCE_KEY).as_float();
 
+            let pred_final_score = sample.score.get(FinalScore::FINAL_SCORE_KEY).as_float();
             let pred_final_confidence = sample
                 .score
                 .get(FinalScore::FINAL_SCORE_CONFIDENCE_KEY)
                 .as_float();
-            let pred_decision = Self::decision_from_str(
-                sample
-                    .score
-                    .get(FinalScore::FINAL_SCORE_DECISION_KEY)
-                    .as_str(),
-            );
 
-            let d_loss = Self::signed_loss(pred_direction, target.direction);
-            let s_loss = Self::unsigned_loss(pred_strength, target.strength);
-            let q_loss = Self::unsigned_loss(pred_quality, target.quality);
-            let v_loss = Self::unsigned_loss(pred_volatility, target.volatility);
-            let dec_loss = Self::decision_loss(pred_decision, target.decision);
+            let pred_decision_str = sample
+                .score
+                .get(FinalScore::FINAL_SCORE_DECISION_KEY)
+                .as_str();
+            let pred_decision = match pred_decision_str.trim().to_ascii_uppercase().as_str() {
+                "LONG" => Decision::Long,
+                "SHORT" => Decision::Short,
+                _ => Decision::Neutral,
+            };
 
-            let target_confidence = target.confidence;
-            let c_loss = (pred_final_confidence - target_confidence)
-                .abs()
-                .clamp(0.0, 1.0);
-
-            let _component_confidence_hint = (
-                pred_direction_conf,
-                pred_strength_conf,
-                pred_quality_conf,
+            let d_loss =
+                Self::weighted_signed_loss(pred_direction, target.direction, pred_direction_conf);
+            let s_loss =
+                Self::weighted_unsigned_loss(pred_strength, target.strength, pred_strength_conf);
+            let q_loss =
+                Self::weighted_unsigned_loss(pred_quality, target.quality, pred_quality_conf);
+            let v_loss = Self::weighted_unsigned_loss(
+                pred_volatility,
+                target.volatility,
                 pred_volatility_conf,
             );
+
+            let dec_loss = Self::decision_loss(pred_decision, target.decision, pred_final_score);
+
+            let c_loss = Self::unsigned_loss(pred_final_confidence, target.confidence);
 
             direction_loss += d_loss;
             strength_loss += s_loss;
@@ -212,13 +228,12 @@ impl Metric for LossMetric {
         decision_loss /= n;
         calibration_loss /= n;
 
-        // Weighted total loss.
         let total_loss = (direction_loss * 0.30
-            + strength_loss * 0.20
-            + quality_loss * 0.15
-            + volatility_loss * 0.10
-            + decision_loss * 0.15
-            + calibration_loss * 0.10)
+            + decision_loss * 0.25
+            + strength_loss * 0.15
+            + calibration_loss * 0.15
+            + quality_loss * 0.10
+            + volatility_loss * 0.05)
             .clamp(0.0, 1.0);
 
         ValueMap::new()

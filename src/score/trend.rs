@@ -1,4 +1,5 @@
 use crate::engine::Context;
+use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::ema::ExpMovAvg;
 use crate::indicator::er::EfficiencyRatio;
 use crate::indicator::roc::RateOfChange;
@@ -19,29 +20,17 @@ use std::any::Any;
 /// - `EfficiencyRatio<10, 3>`
 pub struct TrendScore {
     /// Final directional trend estimate.
-    ///
-    /// Represents the aggregated market bias:
-    ///
-    /// - `+1.0` -> strong bullish trend
-    /// - `0.0`  -> neutral / no clear trend
-    /// - `-1.0` -> strong bearish trend
     pub direction: f64,
 
     /// Confidence in the trend estimate.
-    ///
-    /// Represents how reliable the directional signal is.
-    ///
-    /// Range:
-    /// - `0.0` -> no confidence (noisy / conflicting signals)
-    /// - `1.0` -> high confidence (strong alignment across indicators)
     pub confidence: f64,
 
     computed: bool,
 }
 
 impl TrendScore {
-    pub const DIRECTION_KEY: &str = "trend_direction";
-    pub const CONFIDENCE_KEY: &str = "trend_confidence";
+    pub const DIRECTION_KEY: &'static str = "trend_direction";
+    pub const CONFIDENCE_KEY: &'static str = "trend_confidence";
 
     pub fn new() -> Self {
         Self {
@@ -59,83 +48,71 @@ impl Score for TrendScore {
 
     fn compute(&mut self, ctx: Context) -> ValueMap {
         let regime = ctx.regime();
-
         let ema = ctx.indicator::<ExpMovAvg<600>>();
         let swing = ctx.indicator::<SwingStructure<5, 10>>();
         let roc = ctx.indicator::<RateOfChange<10>>();
         let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
+        let atr = ctx.indicator::<AvgTrueRange<14>>();
 
-        let close = ctx
-            .data()
-            .closes
-            .last()
-            .copied()
-            .unwrap_or(1.0)
-            .abs()
-            .max(1e-12);
+        let current_atr = math::last_finite(&atr.atr).unwrap_or(1.0).max(1e-12);
 
-        let ema_distance = math::last_finite(&ema.distance).unwrap_or(0.0);
         let ema_slope = math::last_finite(&ema.slope).unwrap_or(0.0);
-        let roc_value = math::last_finite(&roc.roc).unwrap_or(0.0);
-        let er_value = math::last_finite(&er.smooth).unwrap_or(0.0);
+        let macro_trend = (ema_slope / current_atr * 15.0).tanh().clamp(-1.0, 1.0);
+
         let structure = math::last_finite(&swing.structure).unwrap_or(0.0);
         let structure_strength = math::last_finite(&swing.structure_strength).unwrap_or(0.0);
-        let bos = math::last_finite(&swing.bos).unwrap_or(0.0);
-        let choch = math::last_finite(&swing.choch).unwrap_or(0.0);
-
-        let ema_bias = ((ema_distance / close) * 20.0).tanh();
-        let ema_momentum = ((ema_slope / close) * 80.0).tanh();
-
-        let roc_bias = (roc_value * 15.0).tanh();
-
-        let structure_bias = structure.clamp(-1.0, 1.0);
-        let bos_bias = bos.clamp(-1.0, 1.0);
-        let choch_bias = choch.clamp(-1.0, 1.0);
-
-        let regime_trend = regime.trend.clamp(-1.0, 1.0);
-        let regime_structure = regime.structure.clamp(-1.0, 1.0);
-
-        let direction = (regime_trend * 0.20
-            + regime_structure * 0.15
-            + structure_bias * 0.22
-            + ema_bias * 0.18
-            + ema_momentum * 0.10
-            + roc_bias * 0.10
-            + bos_bias * 0.03
-            + choch_bias * 0.02)
+        let recent_bos = math::last_non_zero(&swing.bos)
+            .unwrap_or(0.0)
+            .clamp(-1.0, 1.0);
+        let recent_choch = math::last_non_zero(&swing.choch)
+            .unwrap_or(0.0)
             .clamp(-1.0, 1.0);
 
-        let weighted_abs_sum = regime_trend.abs() * 0.20
-            + regime_structure.abs() * 0.15
-            + structure_bias.abs() * 0.22
-            + ema_bias.abs() * 0.18
-            + ema_momentum.abs() * 0.10
-            + roc_bias.abs() * 0.10
-            + bos_bias.abs() * 0.03
-            + choch_bias.abs() * 0.02;
+        let struct_trend = structure.clamp(-1.0, 1.0);
+        let struct_shift = (recent_bos * 0.7 + recent_choch * 0.3).clamp(-1.0, 1.0);
+        let structure_dir = (struct_trend * 0.60 + struct_shift * 0.40).clamp(-1.0, 1.0);
 
-        let consensus = if weighted_abs_sum > 1e-12 {
-            (direction.abs() / weighted_abs_sum).clamp(0.0, 1.0)
+        let roc_value = math::last_finite(&roc.roc).unwrap_or(0.0);
+        let roc_dir = (roc_value * 40.0).tanh();
+
+        let core_dir =
+            (macro_trend * 0.20 + structure_dir * 0.30 + roc_dir * 0.50).clamp(-1.0, 1.0);
+
+        let direction = core_dir.clamp(-1.0, 1.0);
+
+        let regime_vol = regime.volatility.clamp(0.0, 1.0);
+        let er_value = math::last_finite(&er.smooth).unwrap_or(0.0).clamp(0.0, 1.0);
+
+        let dominant_sign = if roc_dir.signum() == structure_dir.signum() && roc_dir.abs() > 0.1 {
+            roc_dir.signum()
         } else {
             0.0
         };
 
-        let signal_energy = weighted_abs_sum.clamp(0.0, 1.0);
-
-        let pair_agreement = {
-            let a = 1.0 - (regime_trend - structure_bias).abs() * 0.5;
-            let b = 1.0 - (structure_bias - ema_bias).abs() * 0.5;
-            let c = 1.0 - (ema_bias - roc_bias).abs() * 0.5;
-            ((a + b + c) / 3.0).clamp(0.0, 1.0)
+        let agreement_score = if dominant_sign != 0.0 {
+            let align_count = [
+                macro_trend.signum(),
+                structure_dir.signum(),
+                roc_dir.signum(),
+            ]
+            .iter()
+            .filter(|&&s| s == dominant_sign)
+            .count();
+            align_count as f64 / 3.0
+        } else {
+            0.33
         };
 
-        let volatility_penalty = 1.0 - regime.volatility.clamp(0.0, 1.0);
+        let core_energy = core_dir.abs();
+        let market_clarity = er_value * 0.5 + structure_strength.clamp(0.0, 1.0) * 0.5;
 
-        let confidence = (consensus * signal_energy * 0.35
-            + pair_agreement * 0.25
-            + er_value.clamp(0.0, 1.0) * 0.20
-            + structure_strength.clamp(0.0, 1.0) * 0.10
-            + volatility_penalty * 0.10)
+        let vol_distance = (regime_vol - 0.5).abs();
+        let vol_penalty = (1.0 - vol_distance * 1.5).clamp(0.0, 1.0);
+
+        let confidence = (agreement_score * 0.35
+            + core_energy * 0.25
+            + market_clarity * 0.25
+            + vol_penalty * 0.15)
             .clamp(0.0, 1.0);
 
         self.direction = direction;

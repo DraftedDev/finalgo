@@ -35,17 +35,6 @@ impl Regime {
 }
 
 /// Compute the market trend regime attribute.
-///
-/// Range:
-/// - -1.0 => strong bearish trend
-/// -  0.0 => flat / unclear
-/// -  1.0 => strong bullish trend
-///
-/// Requires:
-/// - EMA
-/// - ROC
-/// - Efficiency Ratio
-/// - Swing Structure
 fn compute_trend<
     const EMA_PERIOD: usize,
     const ROC_PERIOD: usize,
@@ -56,71 +45,53 @@ fn compute_trend<
 >(
     ctx: &Context,
 ) -> f64 {
-    let close = *ctx.data().closes.last().unwrap_or(&1.0);
-    let close = close.max(1e-12);
-
     let ema = ctx.indicator::<ExpMovAvg<EMA_PERIOD>>();
     let roc = ctx.indicator::<RateOfChange<ROC_PERIOD>>();
     let er = ctx.indicator::<EfficiencyRatio<ER_PERIOD, ER_SMOOTH>>();
     let swing = ctx.indicator::<SwingStructure<SWING_LEFT, SWING_RIGHT>>();
+    let atr = ctx.indicator::<AvgTrueRange<14>>();
 
-    let ema_slope = *ema.slope.last().unwrap_or(&0.0);
-    let ema_distance = *ema.distance.last().unwrap_or(&0.0);
+    let current_atr = math::last_finite(&atr.atr).unwrap_or(1.0).max(1e-12);
 
-    let roc_last = *roc.roc.last().unwrap_or(&0.0);
-    let er_smooth = *er.smooth.last().unwrap_or(&0.0);
+    let ema_distance = math::last_finite(&ema.distance).unwrap_or(0.0);
+    let ema_slope = math::last_finite(&ema.slope).unwrap_or(0.0);
 
-    let structure = *swing.structure.last().unwrap_or(&0.0);
-    let structure_strength = *swing.structure_strength.last().unwrap_or(&0.0);
+    let ema_bias = (ema_distance / current_atr).clamp(-3.0, 3.0) / 3.0;
 
-    let bos = *swing.bos.last().unwrap_or(&0.0);
-    let choch = *swing.choch.last().unwrap_or(&0.0);
+    let ema_slope_score = (ema_slope / current_atr).clamp(-1.0, 1.0);
 
-    // EMA distance is scaled by price so it becomes comparable across assets.
-    let ema_bias = ((ema_distance / close) * 25.0).tanh();
-
-    // EMA slope is small in raw terms, so it needs stronger scaling.
-    let ema_slope_score = ((ema_slope / close) * 250.0).tanh();
-
-    // ROC is already normalized, but still benefits from squashing.
+    let roc_last = math::last_finite(&roc.roc).unwrap_or(0.0);
     let roc_score = (roc_last * 20.0).tanh();
 
-    // Structure is already signed.
-    // Structure strength acts as a confidence multiplier.
+    let structure = math::last_finite(&swing.structure).unwrap_or(0.0);
+    let structure_strength = math::last_finite(&swing.structure_strength).unwrap_or(0.0);
     let structure_score = (structure * (0.5 + 0.5 * structure_strength)).clamp(-1.0, 1.0);
 
-    // BOS reinforces trend continuation.
+    let bos = math::last_non_zero(&swing.bos)
+        .unwrap_or(0.0)
+        .clamp(-1.0, 1.0);
+    let choch = math::last_non_zero(&swing.choch)
+        .unwrap_or(0.0)
+        .clamp(-1.0, 1.0);
+
     let bos_score = bos.clamp(-1.0, 1.0);
 
-    // CHoCH usually signals weakening trend / possible reversal.
-    // Subtracting it makes the trend score less bullish if CHoCH is bullish,
-    // and less bearish if CHoCH is bearish.
-    let choch_score = choch.clamp(-1.0, 1.0);
+    let choch_penalty = choch.clamp(-1.0, 1.0);
 
-    // --- Combine ---
-    let raw_trend = 0.28 * ema_bias
-        + 0.22 * ema_slope_score
+    let raw_trend = 0.30 * ema_bias
+        + 0.20 * ema_slope_score
         + 0.20 * roc_score
-        + 0.18 * structure_score
-        + 0.08 * bos_score
-        - 0.04 * choch_score;
+        + 0.20 * structure_score
+        + 0.05 * bos_score
+        - 0.05 * choch_penalty;
 
-    // Efficiency ratio acts as a confidence gate:
-    // choppy markets reduce trend confidence.
-    let confidence = (0.35 + 0.65 * er_smooth.clamp(0.0, 1.0)).clamp(0.0, 1.0);
+    let er_smooth = math::last_finite(&er.smooth).unwrap_or(0.5).clamp(0.0, 1.0);
+    let chop_penalty = (er_smooth - 1.0).clamp(-1.0, 0.0) * 0.30;
 
-    (raw_trend * confidence).clamp(-1.0, 1.0)
+    (raw_trend + chop_penalty).clamp(-1.0, 1.0)
 }
 
 /// Computes market volatility as a regime attribute in [0.0, 1.0].
-///
-/// Range:
-/// - 0.0 => compressed / quiet market
-/// - 1.0 => explosive / highly volatile market
-///
-/// Requires:
-/// - ATR
-/// - Bollinger Bands
 pub fn compute_volatility<const ATR_PERIOD: usize, const BB_PERIOD: usize, const STD_MULTI: i32>(
     ctx: &Context,
 ) -> f64 {
@@ -130,25 +101,18 @@ pub fn compute_volatility<const ATR_PERIOD: usize, const BB_PERIOD: usize, const
     let atr_norm = math::last_finite(&atr.norm_atr).unwrap_or(0.0);
     let bb_width = math::last_finite(&bb.width).unwrap_or(0.0);
 
-    // ATR is the main driver.
-    // Width confirms compression/expansion state.
-    let atr_score = math::saturate_unit(atr_norm, 0.03);
-    let width_score = math::saturate_unit(bb_width, 0.08);
+    let atr_score = (atr_norm / 0.04).clamp(0.0, 1.0);
 
-    let volatility = 0.65 * atr_score + 0.35 * width_score;
+    let width_score = (bb_width / 0.12).clamp(0.0, 1.0);
 
-    volatility.clamp(0.0, 1.0)
+    let volatility = (atr_score * 0.40 + width_score * 0.60).clamp(0.0, 1.0);
+
+    let vol_smooth = volatility * volatility * (3.0 - 2.0 * volatility);
+
+    vol_smooth.clamp(0.0, 1.0)
 }
 
 /// Computes the structure component of the current market regime.
-///
-/// Output:
-/// - -1.0 => bearish structure
-/// -  0.0 => mixed / unclear structure
-/// -  1.0 => bullish structure
-///
-/// Requires:
-/// - Swing Structure
 pub fn compute_structure<const LEFT: usize, const RIGHT: usize>(ctx: &Context) -> f64 {
     let swing = ctx.indicator::<SwingStructure<LEFT, RIGHT>>();
 
@@ -166,54 +130,43 @@ pub fn compute_structure<const LEFT: usize, const RIGHT: usize>(ctx: &Context) -
         .unwrap_or(0.0)
         .clamp(-1.0, 1.0);
 
-    // BOS confirms continuation, CHoCH represents structural shift.
-    // Both are already signed, so they can be blended directly.
-    let event_pressure = (0.65 * bos + 0.35 * choch).clamp(-1.0, 1.0);
+    let base = structure * (0.40 + 0.60 * strength);
 
-    // Stronger structure should have more influence than weak structure.
-    let base = structure * (0.55 + 0.45 * strength);
+    let bos_influence = bos * 0.30;
 
-    // Event pressure nudges the structure score toward the latest break/reversal state.
-    (base + event_pressure * 0.20).clamp(-1.0, 1.0)
+    let choch_influence = choch * 0.50;
+
+    let mut final_structure = base + bos_influence + choch_influence;
+
+    if choch.abs() > 0.5 {
+        final_structure = (final_structure * 0.30 + choch * 0.70).clamp(-1.0, 1.0);
+    }
+
+    final_structure.clamp(-1.0, 1.0)
 }
 
 /// Computes participation from Relative Volume.
-///
-/// Output range:
-/// - 0.0 = dead / low participation
-/// - 1.0 = extreme participation
-///
-/// A value around 1.0 RVOL maps to ~0.5 participation.
-/// Values above 1.0 move toward 1.0.
-/// Values below 1.0 move toward 0.0.
-///
-/// Requires:
-/// - Relative Volume
 pub fn compute_participation<const PERIOD: usize>(ctx: &Context) -> f64 {
     let rvol = ctx.indicator::<RelativeVolume<PERIOD>>();
     let values = &rvol.values;
 
     let mut recent = Vec::new();
-
     for &v in values.iter().rev() {
         if v.is_finite() {
             recent.push(v);
         }
-
-        if recent.len() == 3 {
+        if recent.len() == 5 {
             break;
         }
     }
 
     if recent.is_empty() {
-        return 0.0;
-    }
+        return 0.5;
+    } // Default to neutral if no data
 
     let avg_rvol = recent.iter().copied().sum::<f64>() / recent.len() as f64;
 
-    // Center at RVOL = 1.0 (normal participation).
-    // Steeper multiplier means stronger separation between quiet and active markets.
-    let participation = math::sigmoid((avg_rvol - 1.0) * 2.5);
+    let participation = math::sigmoid((avg_rvol - 1.0) * 2.0);
 
     participation.clamp(0.0, 1.0)
 }

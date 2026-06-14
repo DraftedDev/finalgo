@@ -62,15 +62,6 @@ pub fn last_finite_mean(values: &[f64], n: usize) -> Option<f64> {
 }
 
 #[inline]
-pub fn saturate_unit(x: f64, scale: f64) -> f64 {
-    if !x.is_finite() || x <= 0.0 || !scale.is_finite() || scale <= 0.0 {
-        0.0
-    } else {
-        (x / scale).tanh().clamp(0.0, 1.0)
-    }
-}
-
-#[inline]
 pub fn last_non_zero(values: &[f64]) -> Option<f64> {
     values
         .iter()

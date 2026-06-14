@@ -1,0 +1,12 @@
+[profile.dev]
+lto = "thin"
+debug = 1
+codegen-units = 16
+overflow-checks = true
+
+[profile.release]
+panic = "abort"
+strip = true
+lto = true
+codegen-units = 1
+overflow-checks = true
