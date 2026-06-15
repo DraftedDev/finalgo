@@ -1,6 +1,8 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataKey, StockData};
 use crate::database::Database;
+use crate::eval::profit::{STOP_LOSS, TAKE_PROFIT};
+use crate::score::final_score::FinalScore;
 use crate::{engine, eval, utils};
 use clap::Parser;
 use tokio::task::JoinSet;
@@ -20,7 +22,7 @@ impl Cli {
         let data = StockData::fetch_yahoo(&DataKey {
             end: args.target,
             size: CANDLE_LOOK_BACK,
-            ticker: args.ticker,
+            ticker: args.ticker.clone(),
         })
         .await;
 
@@ -28,7 +30,34 @@ impl Cli {
 
         let score = engine.compute(true, &data);
 
-        tracing::info!("[######################### SCORE #########################]\n{score}");
+        if args.trade {
+            let decision = score.get(FinalScore::FINAL_SCORE_DECISION_KEY).as_str();
+            let entry_price = data.closes.last().copied().unwrap_or(0.0);
+
+            tracing::info!("[######################### TRADE #########################]");
+            tracing::info!("Ticker: {}", args.ticker);
+            tracing::info!("Decision: {}", decision);
+
+            if decision == "LONG" {
+                let sl = entry_price * (1.0 - STOP_LOSS);
+                let tp = entry_price * (1.0 + TAKE_PROFIT);
+
+                tracing::info!("Entry: ${:.2}", entry_price);
+                tracing::info!("Stop Loss: ${:.2} (-{:.0}%)", sl, STOP_LOSS * 100.0);
+                tracing::info!("Take Profit: ${:.2} (+{:.0}%)", tp, TAKE_PROFIT * 100.0);
+            } else if decision == "SHORT" {
+                let sl = entry_price * (1.0 + STOP_LOSS);
+                let tp = entry_price * (1.0 - TAKE_PROFIT);
+
+                tracing::info!("Entry: ${:.2}", entry_price);
+                tracing::info!("Stop Loss: ${:.2} (+{:.0}%)", sl, STOP_LOSS * 100.0);
+                tracing::info!("Take Profit: ${:.2} (-{:.0}%)", tp, TAKE_PROFIT * 100.0);
+            } else {
+                tracing::info!("--- NO TRADE ---");
+            }
+        } else {
+            tracing::info!("[######################### SCORE #########################]\n{score}");
+        }
     }
 
     /// Evaluates the finalgo algorithm with given arguments.
@@ -129,6 +158,9 @@ pub enum Subcommand {
 /// Arguments for the run command.
 #[derive(Clone, Debug, Parser)]
 pub struct RunArgs {
+    /// Output only trade-relevant information.
+    #[arg(long = "trade", short = 't')]
+    pub trade: bool,
     /// The target date to predict for.
     pub target: String,
     /// The ticker to use.

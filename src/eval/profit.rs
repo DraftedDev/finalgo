@@ -6,11 +6,11 @@ use std::f64;
 /// 20 basis points round-trip (10 bps entry + 10bps exit).
 const FRICTION: f64 = 0.002;
 
-/// 6% Take Profit.
-const TAKE_PROFIT: f64 = 0.1;
+/// 10% Take Profit.
+pub const TAKE_PROFIT: f64 = 0.1;
 
-/// 3% Stop Loss.
-const STOP_LOSS: f64 = 0.06;
+/// 6% Stop Loss.
+pub const STOP_LOSS: f64 = 0.06;
 
 /// # Profit-Loss Metric
 ///
