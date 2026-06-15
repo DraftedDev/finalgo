@@ -94,9 +94,9 @@ impl Score for TrendScore {
         let alignment = amplified_core * short_term_trigger;
 
         let direction = if amplified_core.abs() > 0.10 {
-            if amplified_core > 0.0 && short_term_trigger < -0.20 {
-                0.0
-            } else if amplified_core < 0.0 && short_term_trigger > 0.20 {
+            let is_vetoed = (amplified_core.signum() * short_term_trigger) < -0.20;
+
+            if is_vetoed {
                 0.0
             } else {
                 let mag = amplified_core.abs() + alignment * 0.40;
