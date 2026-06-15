@@ -95,9 +95,7 @@ impl<const PERIOD: usize> Indicator for AvgTrueRange<PERIOD> {
         }
 
         // Normalized ATR
-        for i in (PERIOD - 1)..len {
-            let close = closes[i];
-
+        for (i, &close) in closes.iter().enumerate().skip(PERIOD - 1) {
             if close.abs() > 1e-12 {
                 self.norm_atr[i] = self.atr[i] / close;
             }

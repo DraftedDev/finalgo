@@ -1,5 +1,3 @@
-#![allow(clippy::needless_range_loop)]
-
 use crate::cli::{Cli, Subcommand};
 use clap::Parser;
 use tracing_subscriber::layer::SubscriberExt;

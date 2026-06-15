@@ -45,7 +45,9 @@ impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
         if !candidate.is_finite() {
             return false;
         }
+
         let mut count = 0;
+
         for &v in window {
             if !v.is_finite() {
                 return false;
@@ -65,7 +67,9 @@ impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
         if !candidate.is_finite() {
             return false;
         }
+
         let mut count = 0;
+
         for &v in window {
             if !v.is_finite() {
                 return false;
@@ -93,6 +97,7 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
         let closes = &data.closes;
 
         let len = closes.len();
+
         assert!(
             len > LEFT + RIGHT,
             "Must have at least {LEFT} + {RIGHT} samples"
@@ -112,6 +117,7 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
             if Self::is_unique_max(high_window, highs[i], 3) {
                 self.swing_highs[i] = highs[i];
             }
+
             if Self::is_unique_min(low_window, lows[i], 3) {
                 self.swing_lows[i] = lows[i];
             }
@@ -128,8 +134,7 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
         let mut current_bias = 0.0;
         let mut current_strength = 0.0;
 
-        for i in 0..len {
-            let close = closes[i];
+        for (i, &close) in closes.iter().enumerate() {
             let scale = close.abs().max(1.0);
 
             if self.swing_highs[i].is_finite() {
@@ -174,6 +179,7 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
                 };
 
                 let mut raw = 0.0f64;
+
                 if hh {
                     raw += 0.5 + hh_mag;
                 }
@@ -208,6 +214,7 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
 
             if let Some((_, h1)) = last_high_1 {
                 let broke_high = close > h1;
+
                 if broke_high && !is_above_last_high {
                     let strength = (((close - h1) / scale) * 25.0).tanh().abs().clamp(0.0, 1.0);
                     if current_bias >= 0.0 {
@@ -221,6 +228,7 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
 
             if let Some((_, l1)) = last_low_1 {
                 let broke_low = close < l1;
+
                 if broke_low && !is_below_last_low {
                     let strength = (((l1 - close) / scale) * 25.0).tanh().abs().clamp(0.0, 1.0);
                     if current_bias <= 0.0 {
