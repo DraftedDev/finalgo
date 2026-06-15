@@ -17,16 +17,11 @@ pub struct Cli {
 impl Cli {
     /// Runs the finalgo algorithm with given arguments.
     pub async fn run(&self, args: RunArgs) {
-        let mut database = Database::new();
-
-        let data = StockData::fetch(
-            &mut database,
-            DataKey {
-                end: args.target,
-                size: CANDLE_LOOK_BACK,
-                ticker: args.ticker,
-            },
-        )
+        let data = StockData::fetch_yahoo(&DataKey {
+            end: args.target,
+            size: CANDLE_LOOK_BACK,
+            ticker: args.ticker,
+        })
         .await;
 
         let mut engine = engine::build();
