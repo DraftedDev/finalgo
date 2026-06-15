@@ -1,3 +1,4 @@
+use crate::math;
 use indicatif::ProgressStyle;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -59,11 +60,6 @@ pub fn add_naive_date(date: NaiveDate, count: usize) -> NaiveDate {
     }
 
     result
-}
-
-/// Rounds a float to two decimal places.
-pub fn round_to_two_decimals(x: f64) -> f64 {
-    (x * 100.0).round() / 100.0
 }
 
 /// Runs a function with a progress bar in order to display progress to the end user.
@@ -287,8 +283,8 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Float(fl) => write!(f, "{}", round_to_two_decimals(*fl)),
-            Value::Percent(p) => write!(f, "{} %", round_to_two_decimals(*p) * 100.0),
+            Value::Float(fl) => write!(f, "{}", math::round_to(*fl, 2)),
+            Value::Percent(p) => write!(f, "{} %", math::round_to(*p * 100.0, 2)),
             Value::Int(i) => write!(f, "{}", i),
             Value::String(s) => write!(f, "{}", s),
         }

@@ -81,3 +81,10 @@ pub fn last_non_zero(values: &[f64]) -> Option<f64> {
 pub fn sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + (-x).exp())
 }
+
+/// Rounds a float to a specified number of decimal places.
+#[inline]
+pub fn round_to(value: f64, digits: u32) -> f64 {
+    let factor = 10_f64.powi(digits as i32);
+    (value * factor).round() / factor
+}
