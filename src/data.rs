@@ -39,11 +39,12 @@ impl StockData {
             .expect("Failed to build yahoo connector");
 
         let end = utils::parse_naive_date(&key.end);
-
         let start = utils::subtract_naive_date(end, key.size);
 
         let start = naive_to_offset(start);
-        let end = naive_to_offset(end);
+
+        let api_end = utils::add_naive_date(end, 1);
+        let end = naive_to_offset(api_end);
 
         let mut response = yahoo.get_quote_history(&key.ticker, start, end).await;
         let mut retries = 1;
@@ -58,6 +59,32 @@ impl StockData {
             .expect("Failed to fetch quotes")
             .quotes()
             .expect("Failed to get quotes");
+
+        if quotes.is_empty() {
+            panic!(
+                "Yahoo Finance returned 0 candles for {} up to {}. \
+                The date is likely in the future, or the ticker is invalid.",
+                key.ticker, key.end
+            );
+        }
+
+        let last_quote = quotes.last().unwrap();
+        let last_dt = time::OffsetDateTime::from_unix_timestamp(last_quote.timestamp)
+            .expect("Invalid timestamp from Yahoo Finance");
+
+        let last_date_str = format!(
+            "{:02}.{:02}.{}",
+            last_dt.day(),
+            last_dt.month() as u8,
+            last_dt.year()
+        );
+
+        if last_date_str != key.end {
+            panic!(
+                "Requested data for {} ending on {}, but the latest available candle is from {}.",
+                key.ticker, key.end, last_date_str
+            );
+        }
 
         Self {
             highs: quotes.iter().map(|q| q.high).collect(),
