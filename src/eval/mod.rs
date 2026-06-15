@@ -3,6 +3,7 @@ use crate::engine::Engine;
 use crate::eval::loss::LossMetric;
 use crate::eval::metric::{Metric, MetricInput};
 use crate::eval::precision::PrecisionMetric;
+use crate::eval::profit::ProfitLossMetric;
 use crate::eval::stats::StatsMetric;
 use crate::utils::{FastMap, ValueMap};
 use crate::{engine, utils};
@@ -11,6 +12,7 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 pub mod loss;
 pub mod metric;
 pub mod precision;
+pub mod profit;
 pub mod stats;
 
 pub fn build(stats: bool) -> Evaluator {
@@ -18,6 +20,7 @@ pub fn build(stats: bool) -> Evaluator {
 
     evaluator.add_metric(PrecisionMetric);
     evaluator.add_metric(LossMetric);
+    evaluator.add_metric(ProfitLossMetric);
 
     if stats {
         evaluator.add_metric(StatsMetric);

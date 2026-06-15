@@ -19,9 +19,9 @@ pub struct FinalScore {
 }
 
 impl FinalScore {
-    pub const FINAL_SCORE_KEY: &'static str = "final_score";
-    pub const FINAL_SCORE_CONFIDENCE_KEY: &'static str = "final_confidence";
-    pub const FINAL_SCORE_DECISION_KEY: &'static str = "final_decision";
+    pub const FINAL_SCORE_KEY: &str = "final_score";
+    pub const FINAL_SCORE_CONFIDENCE_KEY: &str = "final_confidence";
+    pub const FINAL_SCORE_DECISION_KEY: &str = "final_decision";
 
     pub fn new() -> Self {
         Self {
@@ -61,10 +61,11 @@ impl Score for FinalScore {
         let vol_distance = (vol - 0.5).abs();
         let vol_factor = (1.0 - vol_distance * 2.0).clamp(0.1, 1.0);
 
-        let env_raw = (strength_val * 0.40) + (qual * 0.30) + (part * 0.30);
+        let env_raw = (strength_val * 0.40) + (qual * 0.40) + (part * 0.20);
+
         let env_score = (env_raw * vol_factor).clamp(0.0, 1.0);
 
-        let execution_multiplier = env_score.sqrt().clamp(0.2, 1.0);
+        let execution_multiplier = env_score.sqrt().clamp(0.1, 1.0);
 
         let final_score = (direction * execution_multiplier).clamp(-1.0, 1.0);
 
@@ -78,14 +79,29 @@ impl Score for FinalScore {
         let signal_clarity = final_score.abs();
         let confidence = (base_confidence * 0.75 + signal_clarity * 0.25).clamp(0.0, 1.0);
 
-        let base_long_threshold = 0.12;
-        let base_short_threshold = -0.22;
+        let regime_trend = ctx.regime().trend.clamp(-1.0, 1.0);
+
+        let base_long_threshold = if regime_trend > 0.2 {
+            0.10
+        } else if regime_trend < -0.2 {
+            0.25
+        } else {
+            0.15
+        };
+
+        let base_short_threshold = if regime_trend < -0.2 {
+            -0.10
+        } else if regime_trend > 0.2 {
+            -0.25
+        } else {
+            -0.15
+        };
 
         let long_discount = self.confidence * 0.05;
-        let short_discount = self.confidence * 0.08;
+        let short_discount = self.confidence * 0.05;
 
-        let long_threshold = (base_long_threshold - long_discount).max(0.06);
-        let short_threshold = (base_short_threshold + short_discount).min(-0.12);
+        let long_threshold = (base_long_threshold - long_discount).max(0.05);
+        let short_threshold = (base_short_threshold + short_discount).min(-0.05);
 
         self.decision = if final_score > long_threshold {
             "LONG".to_string()

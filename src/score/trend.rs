@@ -94,8 +94,14 @@ impl Score for TrendScore {
         let alignment = amplified_core * short_term_trigger;
 
         let direction = if amplified_core.abs() > 0.10 {
-            let mag = amplified_core.abs() + alignment * 0.40;
-            amplified_core.signum() * mag.clamp(0.0, 1.0)
+            if amplified_core > 0.0 && short_term_trigger < -0.20 {
+                0.0
+            } else if amplified_core < 0.0 && short_term_trigger > 0.20 {
+                0.0
+            } else {
+                let mag = amplified_core.abs() + alignment * 0.40;
+                amplified_core.signum() * mag.clamp(0.0, 1.0)
+            }
         } else {
             short_term_trigger * 0.6
         };
