@@ -26,6 +26,7 @@ pub struct RelStrengthIdx<const PERIOD: usize> {
 }
 
 impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
+    /// Create a new empty [RelStrengthIdx] instance.
     pub fn new() -> Self {
         Self { rsi: Vec::new() }
     }

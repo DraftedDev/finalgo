@@ -37,6 +37,7 @@ pub struct Stochastic<const PERIOD: usize, const SMOOTH: usize> {
 }
 
 impl<const PERIOD: usize, const SMOOTH: usize> Stochastic<PERIOD, SMOOTH> {
+    /// Create a new empty [Stochastic] instance.
     pub fn new() -> Self {
         Self {
             k: Vec::new(),

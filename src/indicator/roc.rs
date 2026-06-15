@@ -48,6 +48,7 @@ pub struct RateOfChange<const PERIOD: usize> {
 }
 
 impl<const PERIOD: usize> RateOfChange<PERIOD> {
+    /// Create a new empty [RateOfChange] instance.
     pub fn new() -> Self {
         Self {
             roc: Vec::new(),

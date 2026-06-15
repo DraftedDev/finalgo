@@ -1,31 +1,32 @@
 use crate::engine::Context;
 use std::any::Any;
 
-#[allow(unused)]
+/// Contains the [atr::AvgTrueRange] indicator.
 pub mod atr;
 
-#[allow(unused)]
+/// Contains the [boll::BollingerBands] indicator.
 pub mod boll;
 
-#[allow(unused)]
+/// Contains the [ema::ExpMovAvg] indicator.
 pub mod ema;
 
-#[allow(unused)]
+/// Contains the [er::EfficiencyRatio] indicator.
 pub mod er;
 
-#[allow(unused)]
+/// Contains the [roc::RateOfChange] indicator.
 pub mod roc;
 
-#[allow(unused)]
+/// Contains the [rsi::RelStrengthIdx] indicator.
 pub mod rsi;
 
-#[allow(unused)]
+/// Contains the [rvol::RelativeVolume] indicator.
 pub mod rvol;
 
+/// Contains the [stoch::Stochastic] indicator.
 #[allow(unused)]
 pub mod stoch;
 
-#[allow(unused)]
+/// Contains the [swing::SwingStructure] indicator.
 pub mod swing;
 
 /// A market indicator that may depend on OHLCV data or other indicators.

@@ -25,6 +25,7 @@ pub struct RelativeVolume<const PERIOD: usize> {
 }
 
 impl<const PERIOD: usize> RelativeVolume<PERIOD> {
+    /// Create a new empty [RelativeVolume] instance.
     pub fn new() -> Self {
         Self { values: Vec::new() }
     }

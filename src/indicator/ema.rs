@@ -45,6 +45,7 @@ pub struct ExpMovAvg<const PERIOD: usize> {
 }
 
 impl<const PERIOD: usize> ExpMovAvg<PERIOD> {
+    /// Create a new empty [ExpMovAvg] instance.
     pub fn new() -> Self {
         Self {
             ema: Vec::new(),

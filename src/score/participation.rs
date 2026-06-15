@@ -39,9 +39,13 @@ pub struct ParticipationScore {
 }
 
 impl ParticipationScore {
+    /// The key for the participation score.
     pub const PARTICIPATION_KEY: &str = "participation";
+
+    /// The key for the participation score confidence.
     pub const CONFIDENCE_KEY: &str = "participation_confidence";
 
+    /// Creates a new [ParticipationScore].
     pub fn new() -> Self {
         Self {
             participation: 0.0,

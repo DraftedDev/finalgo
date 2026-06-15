@@ -3,6 +3,9 @@ use crate::utils::{Value, ValueMap};
 
 use std::collections::HashMap;
 
+/// Computes statistics for different metrics.
+///
+/// Extremely useful for development and analysis.
 pub struct StatsMetric;
 
 impl Metric for StatsMetric {

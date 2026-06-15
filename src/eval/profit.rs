@@ -19,13 +19,28 @@ const STOP_LOSS: f64 = 0.06;
 pub struct ProfitLossMetric;
 
 impl ProfitLossMetric {
+    /// The key for the trades taken metric value.
     pub const TRADES_TAKEN_KEY: &'static str = "pnl_trades_taken";
+
+    /// The key for the win rate (%) metric value.
     pub const WIN_RATE_KEY: &'static str = "pnl_win_rate";
+
+    /// The key for the total return (%) metric value.
     pub const TOTAL_RETURN_KEY: &'static str = "pnl_total_return";
+
+    /// The key for the average win (%) metric value.
     pub const AVG_WIN_KEY: &'static str = "pnl_avg_win";
+
+    /// The key for the average loss (%) metric value.
     pub const AVG_LOSS_KEY: &'static str = "pnl_avg_loss";
+
+    /// The key for the profit factor metric value.
     pub const PROFIT_FACTOR_KEY: &'static str = "pnl_profit_factor";
+
+    /// The key for the expectancy (%) metric value.
     pub const EXPECTANCY_KEY: &'static str = "pnl_expectancy";
+
+    /// The key for the Sharpe ratio metric value.
     pub const SHARPE_KEY: &'static str = "pnl_sharpe";
 }
 

@@ -5,6 +5,7 @@ use crate::utils::naive_to_offset;
 use serde::{Deserialize, Serialize};
 use yahoo_finance_api::YahooConnectorBuilder;
 
+/// The fetched stock data value with highs, lows, opens, closes, and volumes.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct StockData {
     pub highs: Vec<f64>,
@@ -15,6 +16,10 @@ pub struct StockData {
 }
 
 impl StockData {
+    /// Fetches the stock data.
+    ///
+    /// If the data is not found in the database, it will be fetched from the Yahoo Finance API.
+    /// This process can take longer if the data must be fetched from the API.
     pub async fn fetch(database: &mut Database, key: DataKey) -> Self {
         if let Some(data) = database.get(&key) {
             data
@@ -26,6 +31,7 @@ impl StockData {
         }
     }
 
+    /// Fetches the stock data from the Yahoo Finance API.
     pub async fn fetch_yahoo(key: &DataKey) -> Self {
         let yahoo = YahooConnectorBuilder::new()
             .timeout(FETCH_TIMEOUT)
@@ -63,9 +69,13 @@ impl StockData {
     }
 }
 
+/// A key used to identify stock data.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct DataKey {
+    /// The size of the associated [StockData].
     pub size: usize,
+    /// The end date of the associated [StockData].
     pub end: String,
+    /// The ticker of the associated [StockData].
     pub ticker: String,
 }

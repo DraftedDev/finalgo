@@ -63,6 +63,7 @@ pub struct EfficiencyRatio<const PERIOD: usize, const SMOOTH: usize> {
 }
 
 impl<const PERIOD: usize, const SMOOTH: usize> EfficiencyRatio<PERIOD, SMOOTH> {
+    /// Create a new empty [EfficiencyRatio] instance.
     pub fn new() -> Self {
         Self {
             er: Vec::new(),
@@ -84,15 +85,6 @@ impl<const PERIOD: usize, const SMOOTH: usize> EfficiencyRatio<PERIOD, SMOOTH> {
         }
 
         if n == 0 { 0.0 } else { sum / n as f64 }
-    }
-
-    #[inline]
-    fn log_return(a: f64, b: f64) -> f64 {
-        if a > 0.0 && b > 0.0 {
-            (b / a).ln()
-        } else {
-            0.0
-        }
     }
 }
 

@@ -14,12 +14,25 @@ use crate::utils::ValueMap;
 pub struct LossMetric;
 
 impl LossMetric {
+    /// Key for the direction loss.
     pub const DIRECTION_LOSS_KEY: &'static str = "loss_direction";
+
+    /// Key for the strength loss.
     pub const STRENGTH_LOSS_KEY: &'static str = "loss_strength";
+
+    /// Key for the quality loss.
     pub const QUALITY_LOSS_KEY: &'static str = "loss_quality";
+
+    /// Key for the volatility loss.
     pub const VOLATILITY_LOSS_KEY: &'static str = "loss_volatility";
+
+    /// Key for the decision loss.
     pub const DECISION_LOSS_KEY: &'static str = "loss_decision";
+
+    /// Key for the calibration/confidence loss.
     pub const CALIBRATION_LOSS_KEY: &'static str = "loss_calibration";
+
+    /// Key for the total loss.
     pub const TOTAL_LOSS_KEY: &'static str = "loss_total";
 
     /// Base Mean Absolute Error for [-1.0, 1.0] bounded signals.

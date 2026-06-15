@@ -30,9 +30,13 @@ pub struct TrendScore {
 }
 
 impl TrendScore {
+    /// The key for the trend direction score.
     pub const DIRECTION_KEY: &'static str = "trend_direction";
+
+    /// The key for the trend confidence score.
     pub const CONFIDENCE_KEY: &'static str = "trend_confidence";
 
+    /// Creates a new [TrendScore] instance.
     pub fn new() -> Self {
         Self {
             direction: 0.0,

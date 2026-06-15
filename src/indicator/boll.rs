@@ -76,6 +76,7 @@ pub struct BollingerBands<const PERIOD: usize, const STD_MULTI: i32> {
 }
 
 impl<const PERIOD: usize, const STD_MULTI: i32> BollingerBands<PERIOD, STD_MULTI> {
+    /// Create a new empty [BollingerBands] instance.
     pub fn new() -> Self {
         Self {
             middle: Vec::new(),

@@ -15,6 +15,7 @@ pub struct Cli {
 }
 
 impl Cli {
+    /// Runs the finalgo algorithm with given arguments.
     pub async fn run(&self, args: RunArgs) {
         let mut database = Database::new();
 
@@ -35,6 +36,7 @@ impl Cli {
         tracing::info!("[######################### SCORE #########################]\n{score}");
     }
 
+    /// Evaluates the finalgo algorithm with given arguments.
     pub async fn eval(&self, args: EvalArgs) {
         let end = utils::parse_naive_date(&args.end);
 

@@ -36,9 +36,13 @@ pub struct StrengthScore {
 }
 
 impl StrengthScore {
+    /// The key for the strength score.
     pub const STRENGTH_KEY: &'static str = "strength";
+
+    /// The key for the strength score confidence.
     pub const CONFIDENCE_KEY: &'static str = "strength_confidence";
 
+    /// Creates a new [StrengthScore] instance.
     pub fn new() -> Self {
         Self {
             strength: 0.0,

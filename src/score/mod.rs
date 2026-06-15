@@ -2,11 +2,22 @@ use crate::engine::Context;
 use crate::utils::ValueMap;
 use std::any::Any;
 
+/// Contains the [final_score::FinalScore] score.
 pub mod final_score;
+
+/// Contains the [participation::ParticipationScore] score.
 pub mod participation;
+
+/// Contains the [quality::QualityScore] score.
 pub mod quality;
+
+/// Contains the [strength::StrengthScore] score.
 pub mod strength;
+
+/// Contains the [trend::TrendScore] score.
 pub mod trend;
+
+/// Contains the [volatility::VolatilityScore] score.
 pub mod volatility;
 
 /// A score based on indicators and optionally other scores if needed.

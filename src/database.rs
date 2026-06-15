@@ -3,6 +3,7 @@ use crate::data::{DataKey, StockData};
 use heed::types::SerdeBincode;
 use heed::{Database as DB, Env, EnvFlags, EnvOpenOptions, WithoutTls};
 
+/// The database containing fetched [StockData] values.
 #[derive(Clone)]
 pub struct Database {
     database: DB<SerdeBincode<DataKey>, SerdeBincode<StockData>>,
@@ -10,6 +11,9 @@ pub struct Database {
 }
 
 impl Database {
+    /// Connects to the database, creating one if it does not exist yet.
+    ///
+    /// The database is stored in `./database.lmdb`.
     pub fn new() -> Self {
         let path = "./database.lmdb";
 
@@ -41,6 +45,7 @@ impl Database {
         Self { database, env }
     }
 
+    /// Sets a [StockData] value in the database using the specified [DataKey].
     pub fn set(&mut self, key: DataKey, data: StockData) {
         let mut txn = self
             .env
@@ -54,6 +59,9 @@ impl Database {
         txn.commit().expect("Failed to commit write handle");
     }
 
+    /// Gets a [StockData] value from the database using the specified [DataKey].
+    ///
+    /// Returns `None` if the key does not exist.
     pub fn get(&self, key: &DataKey) -> Option<StockData> {
         let txn = self.env.read_txn().expect("Failed to acquire read handle");
 

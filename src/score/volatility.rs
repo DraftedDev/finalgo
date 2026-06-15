@@ -33,20 +33,19 @@ pub struct VolatilityScore {
 }
 
 impl VolatilityScore {
+    /// The key for the volatility score.
     pub const VOLATILITY_KEY: &str = "volatility";
+
+    /// The key for the volatility score confidence.
     pub const CONFIDENCE_KEY: &str = "volatility_confidence";
 
+    /// Creates a new [VolatilityScore] instance.
     pub fn new() -> Self {
         Self {
             volatility: 0.0,
             confidence: 0.0,
             computed: false,
         }
-    }
-
-    #[inline]
-    fn clamp01(x: f64) -> f64 {
-        x.clamp(0.0, 1.0)
     }
 
     /// Converts the latest value of a positive series into a normalized
@@ -92,7 +91,7 @@ impl Score for VolatilityScore {
     }
 
     fn compute(&mut self, ctx: Context) -> ValueMap {
-        let regime_vol = Self::clamp01(ctx.regime().volatility);
+        let regime_vol = ctx.regime().volatility.clamp(0.0, 1.0);
 
         let atr = ctx.indicator::<AvgTrueRange<14>>();
         let bb = ctx.indicator::<BollingerBands<20, 2>>();

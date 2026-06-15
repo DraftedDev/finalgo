@@ -19,10 +19,16 @@ pub struct FinalScore {
 }
 
 impl FinalScore {
+    /// The key for the final score.
     pub const FINAL_SCORE_KEY: &str = "final_score";
+
+    /// The key for the final score confidence.
     pub const FINAL_SCORE_CONFIDENCE_KEY: &str = "final_confidence";
+
+    /// The key for the final decision.
     pub const FINAL_SCORE_DECISION_KEY: &str = "final_decision";
 
+    /// Creates a new empty [FinalScore] instance.
     pub fn new() -> Self {
         Self {
             score: 0.0,

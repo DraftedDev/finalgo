@@ -9,12 +9,22 @@ use crate::utils::{FastMap, ValueMap};
 use crate::{engine, utils};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+/// Contains the loss metric.
 pub mod loss;
+
+/// Contains the metric trait and the input structure.
 pub mod metric;
+
+/// Contains the precision metric.
 pub mod precision;
+
+/// Contains the profit-loss metric.
 pub mod profit;
+
+/// Contains the statistics metric.
 pub mod stats;
 
+/// Builds the evaluator with the complete set of metrics.
 pub fn build(stats: bool) -> Evaluator {
     let mut evaluator = Evaluator::new();
 
@@ -29,12 +39,16 @@ pub fn build(stats: bool) -> Evaluator {
     evaluator
 }
 
+/// The evaluator struct for evaluating the engine algorithm.
 pub struct Evaluator {
     engine: Engine,
     metrics: FastMap<String, Box<dyn Metric>>,
 }
 
 impl Evaluator {
+    /// Initializes a new evaluator.
+    ///
+    /// It's recommended to use the [build] function instead of this constructor.
     pub fn new() -> Self {
         Self {
             engine: engine::build(),
@@ -42,6 +56,9 @@ impl Evaluator {
         }
     }
 
+    /// Add a metric to the evaluator.
+    ///
+    /// Metrics must be unique, otherwise a panic will occur.
     pub fn add_metric(&mut self, metric: impl Metric) {
         let name = metric.name();
 
@@ -52,6 +69,7 @@ impl Evaluator {
         self.metrics.insert(name, Box::new(metric));
     }
 
+    /// Evaluates the engine algorithm on the given samples.
     pub fn eval(&mut self, samples: Vec<(StockData, StockData)>) -> ValueMap {
         let inputs = utils::with_progress("Computing", samples.len() as u64, |span| {
             let mut results = Vec::with_capacity(samples.len());

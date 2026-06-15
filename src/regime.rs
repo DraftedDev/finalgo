@@ -24,6 +24,7 @@ pub struct Regime {
 }
 
 impl Regime {
+    /// Computes the entire market regime.
     pub fn compute(ctx: Context) -> Self {
         Self {
             trend: compute_trend::<600, 10, 10, 3, 10, 10>(&ctx),
@@ -91,7 +92,7 @@ fn compute_trend<
     (raw_trend + chop_penalty).clamp(-1.0, 1.0)
 }
 
-/// Computes market volatility as a regime attribute in [0.0, 1.0].
+/// Computes market volatility regime attribute.
 pub fn compute_volatility<const ATR_PERIOD: usize, const BB_PERIOD: usize, const STD_MULTI: i32>(
     ctx: &Context,
 ) -> f64 {

@@ -18,6 +18,7 @@ use crate::score::trend::TrendScore;
 use crate::score::volatility::VolatilityScore;
 use crate::utils::{FastMap, ValueMap};
 
+/// Builds the engine with complete set of indicators and scores.
 pub fn build() -> Engine {
     let mut engine = Engine::new();
 
@@ -43,6 +44,7 @@ pub fn build() -> Engine {
     engine
 }
 
+/// The engine behind the algorithm
 pub struct Engine {
     regime: Option<Regime>,
 
@@ -54,6 +56,9 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Creates a new engine instance. Not recommended to use directly.
+    ///
+    /// See [build] for a more convenient way to create an engine.
     pub fn new() -> Self {
         Self {
             regime: None,
@@ -65,10 +70,14 @@ impl Engine {
         }
     }
 
+    /// Returns the context for the engine with the given [StockData].
     pub fn context<'a>(&'a self, data: &'a StockData) -> Context<'a> {
         Context { engine: self, data }
     }
 
+    /// Adds an indicator to the engine.
+    ///
+    /// Panics if the indicator is already registered.
     pub fn add_indicator<I: Indicator>(&mut self, indicator: I) {
         let name = I::name();
 
@@ -80,6 +89,9 @@ impl Engine {
         self.run_indicators.push(name);
     }
 
+    /// Adds a score to the engine.
+    ///
+    /// Panics if the score is already registered.
     pub fn add_score<S: Score>(&mut self, score: S) {
         let name = S::name();
 
@@ -91,6 +103,9 @@ impl Engine {
         self.run_scores.push(name);
     }
 
+    /// Executes the algorithm with the given [StockData].
+    ///
+    /// Panics if the data is empty.
     #[tracing::instrument(skip_all)]
     pub fn compute(&mut self, traces: bool, data: &StockData) -> ValueMap {
         assert!(!data.highs.is_empty(), "Highs must not be empty");
@@ -151,6 +166,7 @@ impl Engine {
         result
     }
 
+    /// Resets the internal indicator and score states.
     pub fn reset(&mut self) {
         for ind in self.indicators.values_mut() {
             ind.reset();
@@ -162,20 +178,26 @@ impl Engine {
     }
 }
 
+/// The context behind an engine combined with the [StockData].
 pub struct Context<'a> {
     engine: &'a Engine,
     data: &'a StockData,
 }
 
 impl<'a> Context<'a> {
+    /// Returns the [StockData] associated with the context.
     pub fn data(&self) -> &'a StockData {
         self.data
     }
 
+    /// Returns the market regime.
     pub fn regime(&self) -> Regime {
         self.engine.regime.clone().expect("Regime not computed")
     }
 
+    /// Returns the indicator with the given type.
+    ///
+    /// Panics if the indicator is not found or has not been computed yet.
     pub fn indicator<I: Indicator>(&self) -> &I {
         let name = I::name();
 
@@ -193,6 +215,9 @@ impl<'a> Context<'a> {
         ind
     }
 
+    /// Returns the score with the given type.
+    ///
+    /// Panics if the score is not found or has not been computed yet.
     pub fn score<S: Score>(&self) -> &S {
         let name = S::name();
 

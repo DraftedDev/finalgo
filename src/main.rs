@@ -1,19 +1,43 @@
+#![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
+
 use crate::cli::{Cli, Subcommand};
 use clap::Parser;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
 
+/// Contains the command-line-interface of finalgo.
 mod cli;
+
+/// Contains constants used by finalgo.
 mod consts;
+
+/// Contains the stock data structures for the algorithm.
 mod data;
+
+/// Contains database functionality for caching stock data.
 mod database;
+
+/// Contains the engine behind the algorithm.
 mod engine;
+
+/// Contains evaluation logic for the algorithm.
 mod eval;
+
+/// Contains the indicator interface and indicator modules.
 mod indicator;
+
+/// Contains basic math utility functions.
 mod math;
+
+/// Contains the market regime computation logic.
 mod regime;
+
+/// Contains the score interface and score modules.
 mod score;
+
+/// Contains utility structures and functions.
 mod utils;
 
 fn main() {

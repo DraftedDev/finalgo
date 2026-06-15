@@ -33,9 +33,13 @@ pub struct QualityScore {
 }
 
 impl QualityScore {
+    /// The key for the quality score.
     pub const QUALITY_KEY: &'static str = "quality";
+
+    /// The key for the quality score confidence.
     pub const CONFIDENCE_KEY: &'static str = "quality_confidence";
 
+    /// Creates a new [QualityScore] instance.
     pub fn new() -> Self {
         Self {
             quality: 0.0,

@@ -4,62 +4,65 @@ use crate::eval::metric::{Metric, MetricInput};
 use crate::score::final_score::FinalScore;
 use crate::utils::{Value, ValueMap};
 
+/// # Precision Metric
+///
+/// Computes the precision of LONG, SHORT, and NEUTRAL predictions.
 pub struct PrecisionMetric;
 
 impl PrecisionMetric {
-    /// Precision of LONG predictions.
+    /// Key for precision (%) of LONG predictions.
     ///
     /// ```text
     /// correct_long / predicted_long
     /// ```
     pub const LONG_PRECISION_KEY: &str = "precision_long";
 
-    /// Precision of SHORT predictions.
+    /// Key for precision (%) of SHORT predictions.
     ///
     /// ```text
     /// correct_short / predicted_short
     /// ```
     pub const SHORT_PRECISION_KEY: &str = "precision_short";
 
-    /// Precision of NEUTRAL predictions.
+    /// Key for precision (%) of NEUTRAL predictions.
     ///
     /// ```text
     /// correct_neutral / predicted_neutral
     /// ```
     pub const NEUTRAL_PRECISION_KEY: &str = "precision_neutral";
 
-    /// Overall accuracy across all predictions.
+    /// Key for overall accuracy (%) across all predictions.
     ///
     /// ```text
     /// (correct_long + correct_short + correct_neutral) / total_predictions
     /// ```
     pub const OVERALL_PRECISION_KEY: &str = "precision_overall";
 
-    /// Number of predictions classified as LONG.
+    /// Key for the number of predictions classified as LONG.
     pub const PRED_LONG_KEY: &str = "precision_predicted_long";
 
-    /// Number of predictions classified as SHORT.
+    /// Key for the number of predictions classified as SHORT.
     pub const PRED_SHORT_KEY: &str = "precision_predicted_short";
 
-    /// Number of predictions classified as NEUTRAL.
+    /// Key for the number of predictions classified as NEUTRAL.
     pub const PRED_NEUTRAL_KEY: &str = "precision_predicted_neutral";
 
-    /// Number of correctly predicted LONG samples.
+    /// Key for the number of correctly predicted LONG samples.
     pub const CORRECT_LONG_KEY: &str = "precision_correct_long";
 
-    /// Number of correctly predicted SHORT samples.
+    /// Key for the number of correctly predicted SHORT samples.
     pub const CORRECT_SHORT_KEY: &str = "precision_correct_short";
 
-    /// Number of correctly predicted NEUTRAL samples.
+    /// Key for the number of correctly predicted NEUTRAL samples.
     pub const CORRECT_NEUTRAL_KEY: &str = "precision_correct_neutral";
 
-    /// Number of target LONG samples.
+    /// Key for the number of target LONG samples.
     pub const TARGET_LONG_KEY: &str = "precision_target_long";
 
-    /// Number of target SHORT samples.
+    /// Key for the number of target SHORT samples.
     pub const TARGET_SHORT_KEY: &str = "precision_target_short";
 
-    /// Number of target NEUTRAL samples.
+    /// Key for the number of target NEUTRAL samples.
     pub const TARGET_NEUTRAL_KEY: &str = "precision_target_neutral";
 
     #[inline]

@@ -38,6 +38,7 @@ pub struct AvgTrueRange<const PERIOD: usize> {
 }
 
 impl<const PERIOD: usize> AvgTrueRange<PERIOD> {
+    /// Creates a new [AvgTrueRange] instance.
     pub fn new() -> Self {
         Self {
             tr: Vec::new(),

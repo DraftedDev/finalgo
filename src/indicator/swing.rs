@@ -22,6 +22,7 @@ pub struct SwingStructure<const LEFT: usize, const RIGHT: usize> {
 }
 
 impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
+    /// Create a new empty [SwingStructure] instance.
     pub fn new() -> Self {
         assert!(LEFT > 0 && RIGHT > 0, "LEFT and RIGHT must be > 0");
 
