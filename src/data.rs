@@ -42,7 +42,6 @@ impl StockData {
         let start = utils::subtract_naive_date(end, key.size);
 
         let start = naive_to_offset(start);
-
         let api_end = utils::add_naive_date(end, 1);
         let end = naive_to_offset(api_end);
 
@@ -56,21 +55,17 @@ impl StockData {
         }
 
         let quotes = response
-            .expect("Failed to fetch quotes")
+            .expect("Failed to fetch yahoo quotes after maximum retries")
             .quotes()
-            .expect("Failed to get quotes");
+            .expect("Failed to get quotes from response");
 
         if quotes.is_empty() {
-            panic!(
-                "Yahoo Finance returned 0 candles for {} up to {}. \
-                The date is likely in the future, or the ticker is invalid.",
-                key.ticker, key.end
-            );
+            panic!("Yahoo Finance returned 0 candles for {}.", key.ticker);
         }
 
         let last_quote = quotes.last().unwrap();
         let last_dt = time::OffsetDateTime::from_unix_timestamp(last_quote.timestamp)
-            .expect("Invalid timestamp from Yahoo Finance");
+            .expect("Failed to process yahoo timestamp");
 
         let last_date_str = format!(
             "{:02}.{:02}.{}",
