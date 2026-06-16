@@ -7,8 +7,8 @@ pub const CANDLE_LOOK_BACK: usize = 610;
 
 /// The target horizon of the algorithm.
 ///
-/// Currently equal to 7 days (1 week).
-pub const TARGET_HORIZON: usize = 7;
+/// Currently equal to 5 trading days (1 week).
+pub const TARGET_HORIZON: usize = 5;
 
 /// The timeout for fetching stock data from Yahoo Finance.
 pub const FETCH_TIMEOUT: Duration = Duration::from_secs(16);
