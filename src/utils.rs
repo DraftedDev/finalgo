@@ -1,14 +1,12 @@
 use crate::math;
+use apca::{ApiInfo, Client};
 use indicatif::ProgressStyle;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::path::Path;
 use std::sync::LazyLock;
-use time::format_description::BorrowedFormatItem;
-use time::macros::format_description;
-use time::{Date, UtcOffset};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 use trading_calendar::{Market, NaiveDate, TradingCalendar};
-use yahoo_finance_api::time::OffsetDateTime;
 
 /// [HashMap] with the [rustc_hash::FxBuildHasher] for maximum performance.
 pub type FastMap<K, V> = HashMap<K, V, rustc_hash::FxBuildHasher>;
@@ -18,7 +16,6 @@ static CALENDAR: LazyLock<TradingCalendar> = LazyLock::new(|| {
 });
 
 const CHRONO_FORMAT: &str = "%d.%m.%Y";
-const TIME_FORMAT: &[BorrowedFormatItem] = format_description!("[day].[month].[year]");
 
 /// Parses a date string into a [NaiveDate] using the format `dd.mm.yyyy`.
 pub fn parse_naive_date(s: &str) -> NaiveDate {
@@ -28,16 +25,6 @@ pub fn parse_naive_date(s: &str) -> NaiveDate {
 /// Formats a [NaiveDate] into a string using the format `dd.mm.yyyy`.
 pub fn format_naive_date(date: NaiveDate) -> String {
     date.format(CHRONO_FORMAT).to_string()
-}
-
-/// Converts a [NaiveDate] into an [OffsetDateTime] with a UTC offset of 2 hours.
-pub fn naive_to_offset(date: NaiveDate) -> OffsetDateTime {
-    let fmt = date.format(CHRONO_FORMAT).to_string();
-
-    Date::parse(&fmt, &TIME_FORMAT)
-        .expect("Failed to parse date")
-        .midnight()
-        .assume_offset(UtcOffset::from_hms(2, 0, 0).expect("Failed to create offset"))
 }
 
 /// Subtracts a number of trading days from a [NaiveDate].
@@ -122,6 +109,35 @@ pub async fn with_progress_async<Fut: Future<Output = R>, R>(
     drop(enter);
 
     result
+}
+
+pub fn client() -> Client {
+    Client::new(
+        ApiInfo::from_parts(
+            "https://data.alpaca.markets/",
+            read_secret("ALPACA_KEY"),
+            read_secret("ALPACA_SECRET"),
+        )
+        .expect("Failed to build Alpaca Client"),
+    )
+}
+
+pub fn read_secret(name: &str) -> String {
+    let path = Path::new("secrets").join(name);
+
+    if path.exists() {
+        std::fs::read_to_string(path)
+            .expect("Failed to read secret")
+            .replace(|c: char| c.is_whitespace() || c == '\r' || c == '\n', "")
+    } else {
+        std::fs::write(&path, "").expect("Failed to write secret file");
+
+        panic!(
+            "Secret '{}' not found. Write the secret to {} please.",
+            name,
+            path.display()
+        );
+    }
 }
 
 /// A [FastMap] of [Value]s.

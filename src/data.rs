@@ -1,9 +1,10 @@
-use crate::consts::{FETCH_RETRIES, FETCH_TIMEOUT};
+use crate::consts::FETCH_RETRIES;
 use crate::database::Database;
 use crate::utils;
-use crate::utils::naive_to_offset;
+use apca::Client;
+use chrono::Datelike;
 use serde::{Deserialize, Serialize};
-use yahoo_finance_api::YahooConnectorBuilder;
+use trading_calendar::{NaiveDate, Utc};
 
 /// The fetched stock data value with highs, lows, opens, closes, and volumes.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -18,75 +19,132 @@ pub struct StockData {
 impl StockData {
     /// Fetches the stock data.
     ///
-    /// If the data is not found in the database, it will be fetched from the Yahoo Finance API.
+    /// If the data is not found in the database, it will be fetched from the Alpaca Finance API.
     /// This process can take longer if the data must be fetched from the API.
-    pub async fn fetch(database: &mut Database, key: DataKey) -> Self {
+    pub async fn fetch(database: &mut Database, client: &Client, key: DataKey) -> Self {
         if let Some(data) = database.get(&key) {
             data
         } else {
-            tracing::info!("StockData not found in database. Fetching from Yahoo...");
-            let data = Self::fetch_yahoo(&key).await;
+            tracing::info!("StockData not found in database. Fetching from Alpaca...");
+            let data = Self::fetch_alpaca(client, &key).await;
             database.set(key, data.clone());
             data
         }
     }
 
-    /// Fetches the stock data from the Yahoo Finance API.
-    pub async fn fetch_yahoo(key: &DataKey) -> Self {
-        let yahoo = YahooConnectorBuilder::new()
-            .timeout(FETCH_TIMEOUT)
-            .build()
-            .expect("Failed to build yahoo connector");
+    /// Fetches the stock data from the Alpaca Finance API.
+    pub async fn fetch_alpaca(client: &Client, key: &DataKey) -> Self {
+        let end_date = utils::parse_naive_date(&key.end);
+        let start_date = utils::subtract_naive_date(end_date, key.size);
+        let api_end_date = utils::add_naive_date(end_date, 1);
 
-        let end = utils::parse_naive_date(&key.end);
-        let start = utils::subtract_naive_date(end, key.size);
+        let start_chrono =
+            NaiveDate::from_ymd_opt(start_date.year(), start_date.month(), start_date.day())
+                .expect("Invalid start date")
+                .and_hms_opt(0, 0, 0)
+                .expect("Invalid start time")
+                .and_local_timezone(Utc)
+                .unwrap();
 
-        let start = naive_to_offset(start);
-        let api_end = utils::add_naive_date(end, 1);
-        let end = naive_to_offset(api_end);
+        let end_chrono = NaiveDate::from_ymd_opt(
+            api_end_date.year(),
+            api_end_date.month(),
+            api_end_date.day(),
+        )
+        .expect("Invalid end date")
+        .and_hms_opt(0, 0, 0)
+        .expect("Invalid end time")
+        .and_local_timezone(Utc)
+        .unwrap();
 
-        let mut response = yahoo.get_quote_history(&key.ticker, start, end).await;
+        let request = apca::data::v2::bars::ListReqInit {
+            limit: None,
+            adjustment: Some(apca::data::v2::bars::Adjustment::Raw),
+            feed: None,
+            page_token: None,
+            _non_exhaustive: (),
+        }
+        .init(
+            key.ticker.clone(),
+            start_chrono,
+            end_chrono,
+            apca::data::v2::bars::TimeFrame::OneDay,
+        );
+
+        let mut response = client.issue::<apca::data::v2::bars::List>(&request).await;
+
         let mut retries = 1;
 
         while response.is_err() && retries < FETCH_RETRIES {
-            tracing::warn!("Fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
-            response = yahoo.get_quote_history(&key.ticker, start, end).await;
+            tracing::warn!("Alpaca fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
+            response = client.issue::<apca::data::v2::bars::List>(&request).await;
             retries += 1;
         }
 
-        let quotes = response
-            .expect("Failed to fetch yahoo quotes after maximum retries")
-            .quotes()
-            .expect("Failed to get quotes from response");
+        let bars_response = response.expect("Failed to fetch from Alpaca after maximum retries");
+        let bars = bars_response.bars;
 
-        if quotes.is_empty() {
-            panic!("Yahoo Finance returned 0 candles for {}.", key.ticker);
+        if bars.is_empty() {
+            panic!("Alpaca returned 0 bars for {}.", key.ticker);
         }
 
-        let last_quote = quotes.last().unwrap();
-        let last_dt = time::OffsetDateTime::from_unix_timestamp(last_quote.timestamp)
-            .expect("Failed to process yahoo timestamp");
+        let last_bar = bars.last().unwrap();
 
+        let naive_date = last_bar.time.date_naive();
         let last_date_str = format!(
             "{:02}.{:02}.{}",
-            last_dt.day(),
-            last_dt.month() as u8,
-            last_dt.year()
+            naive_date.day(),
+            naive_date.month(),
+            naive_date.year()
         );
 
         if last_date_str != key.end {
-            panic!(
-                "Requested data for {} ending on {}, but the latest available candle is from {}.",
-                key.ticker, key.end, last_date_str
+            tracing::warn!(
+                "Date mismatch for {}: requested {}, but latest candle is from {}. Using available data.",
+                key.ticker,
+                key.end,
+                last_date_str
             );
         }
 
         Self {
-            highs: quotes.iter().map(|q| q.high).collect(),
-            lows: quotes.iter().map(|q| q.low).collect(),
-            opens: quotes.iter().map(|q| q.open).collect(),
-            closes: quotes.iter().map(|q| q.close).collect(),
-            volumes: quotes.iter().map(|q| q.volume as f64).collect(),
+            opens: bars
+                .iter()
+                .map(|b| {
+                    b.open
+                        .to_string()
+                        .parse::<f64>()
+                        .expect("Failed to parse open")
+                })
+                .collect(),
+            highs: bars
+                .iter()
+                .map(|b| {
+                    b.high
+                        .to_string()
+                        .parse::<f64>()
+                        .expect("Failed to parse high")
+                })
+                .collect(),
+            lows: bars
+                .iter()
+                .map(|b| {
+                    b.low
+                        .to_string()
+                        .parse::<f64>()
+                        .expect("Failed to parse low")
+                })
+                .collect(),
+            closes: bars
+                .iter()
+                .map(|b| {
+                    b.close
+                        .to_string()
+                        .parse::<f64>()
+                        .expect("Failed to parse close")
+                })
+                .collect(),
+            volumes: bars.iter().map(|b| b.volume as f64).collect(),
         }
     }
 }

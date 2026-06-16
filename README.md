@@ -12,11 +12,11 @@ but they aren't really ideal for real-life trading.
 
 This algorithm is my best attempt yet.
 
-It's written in Rust and uses the Yahoo Finance API for fetching market data for free.
+It's written in Rust and uses the Alpaca Finance API for fetching market data for free.
 
 ## Features
 
-- Free Data fetching from the Yahoo Finance API.
+- Free Data fetching from the Alpaca Finance API.
 - Fetched market data in parallel for maximum performance.
 - Stores fetched data in a database for quick access.
 - Complete Engine + Indicators + Scores + Metrics architecture.

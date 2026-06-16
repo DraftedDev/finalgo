@@ -5,6 +5,7 @@ use crate::eval::profit::{STOP_LOSS, TAKE_PROFIT};
 use crate::score::final_score::FinalScore;
 use crate::{engine, eval, utils};
 use clap::Parser;
+use std::sync::Arc;
 use tokio::task::JoinSet;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
@@ -23,11 +24,14 @@ impl Cli {
             utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
         let target_end_str = utils::format_naive_date(target_end_date);
 
-        let data = StockData::fetch_yahoo(&DataKey {
-            end: args.target.clone(),
-            size: CANDLE_LOOK_BACK,
-            ticker: args.ticker.clone(),
-        })
+        let data = StockData::fetch_alpaca(
+            &utils::client(),
+            &DataKey {
+                end: args.target.clone(),
+                size: CANDLE_LOOK_BACK,
+                ticker: args.ticker.clone(),
+            },
+        )
         .await;
 
         let mut engine = engine::build();
@@ -92,6 +96,7 @@ impl Cli {
         let fetched =
             utils::with_progress_async("Fetching", data.len() as u64, |span| async move {
                 let database = Database::new();
+                let client = Arc::new(utils::client());
                 let mut fetched = Vec::with_capacity(data.len());
 
                 for chunk in data.chunks(FETCH_CHUNK_SIZE) {
@@ -99,11 +104,13 @@ impl Cli {
 
                     for (t, t_target, ticker) in chunk.iter().cloned() {
                         let mut database = database.clone();
+                        let client = client.clone();
                         let span = span.clone();
 
                         set.spawn(async move {
                             let predict = StockData::fetch(
                                 &mut database,
+                                &client,
                                 DataKey {
                                     end: utils::format_naive_date(t),
                                     size: CANDLE_LOOK_BACK,
@@ -114,6 +121,7 @@ impl Cli {
 
                             let target = StockData::fetch(
                                 &mut database,
+                                &client,
                                 DataKey {
                                     end: utils::format_naive_date(t_target),
                                     size: TARGET_HORIZON,

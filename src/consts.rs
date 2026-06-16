@@ -10,10 +10,7 @@ pub const CANDLE_LOOK_BACK: usize = 610;
 /// Currently equal to 5 trading days (1 week).
 pub const TARGET_HORIZON: usize = 5;
 
-/// The timeout for fetching stock data from Yahoo Finance.
-pub const FETCH_TIMEOUT: Duration = Duration::from_secs(16);
-
-/// The number of retries for fetching stock data from Yahoo Finance.
+/// The number of retries for fetching stock data from the Alpaca API.
 ///
 /// If fetching fails, due to timeouts or other issues,
 /// the request will be retried, but maximally this many times.
@@ -21,7 +18,7 @@ pub const FETCH_RETRIES: usize = 5;
 
 /// The number of datasets to fetch in parallel.
 ///
-/// Setting this value too high can lead to rate-limiting from the Yahoo Finance API.
+/// Setting this value too high can lead to rate-limiting from the Alpaca API.
 pub const FETCH_CHUNK_SIZE: usize = 10;
 
 /// The size of the database memory map.
