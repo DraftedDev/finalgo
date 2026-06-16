@@ -19,15 +19,18 @@ pub struct Cli {
 impl Cli {
     /// Runs the finalgo algorithm with given arguments.
     pub async fn run(&self, args: RunArgs) {
+        let target_end_date =
+            utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
+        let target_end_str = utils::format_naive_date(target_end_date);
+
         let data = StockData::fetch_yahoo(&DataKey {
-            end: args.target,
+            end: args.target.clone(),
             size: CANDLE_LOOK_BACK,
             ticker: args.ticker.clone(),
         })
         .await;
 
         let mut engine = engine::build();
-
         let score = engine.compute(true, &data);
 
         if args.trade {
@@ -37,6 +40,7 @@ impl Cli {
             tracing::info!("[######################### TRADE #########################]");
             tracing::info!("Ticker: {}", args.ticker);
             tracing::info!("Decision: {}", decision);
+            tracing::info!("Predicted Target Date: {}", target_end_str); // <--- NEW LINE
 
             if decision == "LONG" {
                 let sl = entry_price * (1.0 - STOP_LOSS);
