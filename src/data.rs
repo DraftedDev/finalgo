@@ -183,7 +183,7 @@ impl DataCache {
 
         let request = apca::data::v2::bars::ListReqInit {
             limit: Some(10000),
-            adjustment: Some(apca::data::v2::bars::Adjustment::Raw),
+            adjustment: Some(apca::data::v2::bars::Adjustment::Split),
             feed: None,
             page_token: None,
             _non_exhaustive: (),
