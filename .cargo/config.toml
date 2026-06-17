@@ -3,6 +3,8 @@ lto = "thin"
 debug = 1
 codegen-units = 16
 overflow-checks = true
+incremental = true
+rustflags = ["-Ctarget-cpu=native", "-Zshare-generics=y", "-Zthreads=0"]
 
 [profile.release]
 panic = "abort"
@@ -10,3 +12,4 @@ strip = true
 lto = true
 codegen-units = 1
 overflow-checks = true
+rustflags = ["-Ctarget-cpu=native"]
