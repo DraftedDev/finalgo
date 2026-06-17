@@ -16,9 +16,6 @@ mod consts;
 /// Contains the stock data structures for the algorithm.
 mod data;
 
-/// Contains database functionality for caching stock data.
-mod database;
-
 /// Contains the engine behind the algorithm.
 mod engine;
 

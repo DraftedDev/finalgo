@@ -1,15 +1,13 @@
 use crate::consts::FETCH_RETRIES;
-use crate::database::Database;
 use crate::utils;
 use crate::utils::FastMap;
 use apca::Client;
 use apca::data::v2::bars::Bar;
 use chrono::Datelike;
-use serde::{Deserialize, Serialize};
 use trading_calendar::{NaiveDate, Utc};
 
 /// The fetched stock data value with highs, lows, opens, closes, and volumes.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StockData {
     pub highs: Vec<f64>,
     pub lows: Vec<f64>,
@@ -21,28 +19,15 @@ pub struct StockData {
 impl StockData {
     /// Fetches the stock data.
     ///
-    /// If the data is not found in the database, it will check the [DataCache].
     /// If not in the cache, the data will be fetched from the Alpaca Finance API.
-    pub async fn fetch(
-        database: &mut Database,
-        cache: &DataCache,
-        client: &Client,
-        key: DataKey,
-    ) -> Self {
-        if let Some(data) = database.get(&key) {
-            return data;
-        }
-
-        let data = if let Some(data) = cache.get_stock_data(&key) {
-            tracing::info!("StockData not found in database. Fetching from Cache...");
+    pub async fn fetch(cache: &DataCache, client: &Client, key: DataKey) -> Self {
+        if let Some(data) = cache.get_stock_data(&key) {
             data
         } else {
             tracing::warn!("StockData not found in cache. Fetching from Alpaca...");
-            Self::fetch_alpaca(client, &key).await
-        };
 
-        database.set(key, data.clone());
-        data
+            Self::fetch_alpaca(client, &key).await
+        }
     }
 
     /// Fetches the stock data from the Alpaca Finance API.
@@ -143,7 +128,7 @@ impl StockData {
 }
 
 /// A key used to identify stock data.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct DataKey {
     /// The size of the associated [StockData].
     pub size: usize,
@@ -197,7 +182,7 @@ impl DataCache {
         .unwrap();
 
         let request = apca::data::v2::bars::ListReqInit {
-            limit: None,
+            limit: Some(10000),
             adjustment: Some(apca::data::v2::bars::Adjustment::Raw),
             feed: None,
             page_token: None,
@@ -220,7 +205,6 @@ impl DataCache {
         }
 
         let bars_response = response.expect("Failed to fetch bulk data from Alpaca");
-
         tracing::info!("Cached {} bars for {}", bars_response.bars.len(), ticker);
 
         self.bars.insert(ticker, bars_response.bars);
@@ -229,29 +213,29 @@ impl DataCache {
     /// Slices the cached bars in memory to match the exact [DataKey] window.
     pub fn get_stock_data(&self, key: &DataKey) -> Option<StockData> {
         let bars = self.bars.get(&key.ticker)?;
-
         let end_date = utils::parse_naive_date(&key.end);
-        let start_date = utils::subtract_naive_date(end_date, key.size);
 
-        let start_chrono =
-            NaiveDate::from_ymd_opt(start_date.year(), start_date.month(), start_date.day())
-                .expect("Invalid start date");
-        let end_chrono = NaiveDate::from_ymd_opt(end_date.year(), end_date.month(), end_date.day())
-            .expect("Invalid end date");
-
-        let mut filtered_bars = Vec::with_capacity(key.size + 5);
-
-        for bar in bars {
+        let mut end_idx = None;
+        for (i, bar) in bars.iter().enumerate().rev() {
             let bar_date = bar.time.date_naive();
-            if bar_date >= start_chrono && bar_date <= end_chrono {
-                filtered_bars.push(bar.clone());
+            let bar_naive =
+                NaiveDate::from_ymd_opt(bar_date.year(), bar_date.month(), bar_date.day()).unwrap();
+
+            if bar_naive <= end_date {
+                end_idx = Some(i);
+                break;
             }
         }
 
-        if filtered_bars.is_empty() {
+        let end_idx = end_idx?;
+
+        let start_idx = end_idx.saturating_sub(key.size - 1);
+        let sliced_bars = bars[start_idx..=end_idx].to_vec();
+
+        if sliced_bars.len() < key.size {
             return None;
         }
 
-        Some(StockData::from_bar(filtered_bars))
+        Some(StockData::from_bar(sliced_bars))
     }
 }

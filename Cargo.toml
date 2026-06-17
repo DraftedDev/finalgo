@@ -17,7 +17,5 @@ trading-calendar = "0.2.3"
 chrono = "0.4.45"
 indicatif = "0.18.4"
 tracing-indicatif = "0.3.14"
-heed = { version = "0.22.1", default-features = false, features = ["serde", "serde-bincode"] }
-serde = { version = "1.0.228", features = ["derive"] }
 rustc-hash = "2.1.2"
 mimalloc = "0.1.52"

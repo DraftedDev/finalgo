@@ -19,9 +19,6 @@ pub const FETCH_RETRIES: usize = 5;
 /// Setting this value too high can lead to rate-limiting from the Alpaca API.
 pub const FETCH_CHUNK_SIZE: usize = 10;
 
-/// The size of the database memory map.
-pub const DATABASE_MEM_MAP: usize = 1024 * 1024 * 1024 * 16;
-
 /// The target dead zone of the algorithm.
 ///
 /// This is the minimum threshold at which the target direction will not be considered neutral.

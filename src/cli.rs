@@ -1,6 +1,5 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataCache, DataKey, StockData};
-use crate::database::Database;
 use crate::eval::profit::{STOP_LOSS, TAKE_PROFIT};
 use crate::score::final_score::FinalScore;
 use crate::{engine, eval, utils};
@@ -120,21 +119,18 @@ impl Cli {
 
         let fetched =
             utils::with_progress_async("Fetching", data.len() as u64, |span| async move {
-                let database = Database::new();
                 let mut fetched = Vec::with_capacity(data.len());
 
                 for chunk in data.chunks(FETCH_CHUNK_SIZE) {
                     let mut set = JoinSet::new();
 
                     for (t, t_target, ticker) in chunk.iter().cloned() {
-                        let mut database = database.clone();
                         let client = client.clone();
                         let cache = cache.clone();
                         let span = span.clone();
 
                         set.spawn(async move {
                             let predict = StockData::fetch(
-                                &mut database,
                                 &cache,
                                 &client,
                                 DataKey {
@@ -146,7 +142,6 @@ impl Cli {
                             .await;
 
                             let target = StockData::fetch(
-                                &mut database,
                                 &cache,
                                 &client,
                                 DataKey {
