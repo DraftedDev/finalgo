@@ -40,6 +40,10 @@ mod score;
 /// Contains utility structures and functions.
 mod utils;
 
+/// Use mimalloc as the global allocator for better performance.
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() {
     let cli = Cli::parse();
 
