@@ -7,7 +7,6 @@ use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::swing::SwingStructure;
 use crate::math;
 use crate::score::Score;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Trend Score
@@ -30,12 +29,6 @@ pub struct TrendScore {
 }
 
 impl TrendScore {
-    /// The key for the trend direction score.
-    pub const DIRECTION_KEY: &'static str = "trend_direction";
-
-    /// The key for the trend confidence score.
-    pub const CONFIDENCE_KEY: &'static str = "trend_confidence";
-
     /// Creates a new [TrendScore] instance.
     pub fn new() -> Self {
         Self {
@@ -50,7 +43,7 @@ impl Score for TrendScore {
         "trend".to_string()
     }
 
-    fn compute(&mut self, ctx: Context) -> ValueMap {
+    fn compute(&mut self, ctx: Context) {
         let regime = ctx.regime();
         let ema = ctx.indicator::<ExpMovAvg<100>>();
         let swing = ctx.indicator::<SwingStructure<5, 10>>();
@@ -151,18 +144,10 @@ impl Score for TrendScore {
         self.direction = direction;
         self.confidence = confidence;
         self.computed = true;
-
-        ValueMap::new()
-            .with(Self::DIRECTION_KEY, self.direction)
-            .with(Self::CONFIDENCE_KEY, self.confidence)
     }
 
     fn is_computed(&self) -> bool {
         self.computed
-    }
-
-    fn reset(&mut self) {
-        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

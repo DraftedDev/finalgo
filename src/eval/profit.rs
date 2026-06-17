@@ -1,4 +1,5 @@
 use crate::eval::metric::{Metric, MetricInput};
+use crate::indicator::exits::DynamicExits;
 use crate::score::final_score::FinalScore;
 use crate::utils::{Value, ValueMap};
 use std::f64;
@@ -6,43 +7,14 @@ use std::f64;
 /// 20 basis points round-trip (10 bps entry + 10bps exit).
 const FRICTION: f64 = 0.002;
 
-/// 3% Take Profit.
-pub const TAKE_PROFIT: f64 = 0.03;
-
-/// 2% Stop Loss.
-pub const STOP_LOSS: f64 = 0.02;
-
 /// # Profit-Loss Metric
 ///
 /// Computes the average profit/loss per trade and a few more statistics
 /// to evaluate the performance of the algorithm in terms of profit/loss.
+///
+/// Uses the [DynamicExits] indicator for volatility-normalized (ATR-based)
+/// Take-Profit and Stop-Loss levels, ensuring multi-asset compatibility.
 pub struct ProfitLossMetric;
-
-impl ProfitLossMetric {
-    /// The key for the trades taken metric value.
-    pub const TRADES_TAKEN_KEY: &'static str = "pnl_trades_taken";
-
-    /// The key for the win rate (%) metric value.
-    pub const WIN_RATE_KEY: &'static str = "pnl_win_rate";
-
-    /// The key for the total return (%) metric value.
-    pub const TOTAL_RETURN_KEY: &'static str = "pnl_total_return";
-
-    /// The key for the average win (%) metric value.
-    pub const AVG_WIN_KEY: &'static str = "pnl_avg_win";
-
-    /// The key for the average loss (%) metric value.
-    pub const AVG_LOSS_KEY: &'static str = "pnl_avg_loss";
-
-    /// The key for the profit factor metric value.
-    pub const PROFIT_FACTOR_KEY: &'static str = "pnl_profit_factor";
-
-    /// The key for the expectancy (%) metric value.
-    pub const EXPECTANCY_KEY: &'static str = "pnl_expectancy";
-
-    /// The key for the Sharpe ratio metric value.
-    pub const SHARPE_KEY: &'static str = "pnl_sharpe";
-}
 
 impl Metric for ProfitLossMetric {
     fn name(&self) -> String {
@@ -61,10 +33,8 @@ impl Metric for ProfitLossMetric {
         let mut trade_returns: Vec<f64> = Vec::new();
 
         for sample in result {
-            let decision_str = sample
-                .score
-                .get(FinalScore::FINAL_SCORE_DECISION_KEY)
-                .as_str();
+            let decision_str = sample.engine.score::<FinalScore>().decision.as_str();
+
             let decision = match decision_str.trim().to_ascii_uppercase().as_str() {
                 "LONG" => Decision::Long,
                 "SHORT" => Decision::Short,
@@ -78,9 +48,18 @@ impl Metric for ProfitLossMetric {
             trades_taken += 1;
             let target = &sample.target;
             let entry = target.opens[0];
+
             if entry.abs() < 1e-12 {
                 continue;
             }
+
+            let exits = sample.engine.indicator::<DynamicExits>();
+            let last_idx = exits.stop_loss_long.len() - 1;
+
+            let sl_long = exits.stop_loss_long[last_idx];
+            let tp_long = exits.take_profit_long[last_idx];
+            let sl_short = exits.stop_loss_short[last_idx];
+            let tp_short = exits.take_profit_short[last_idx];
 
             let mut trade_pnl = 0.0;
 
@@ -91,37 +70,29 @@ impl Metric for ProfitLossMetric {
 
                 match decision {
                     Decision::Long => {
-                        let high_return = (day_high - entry) / entry;
-                        let low_return = (day_low - entry) / entry;
-
-                        if low_return <= -STOP_LOSS {
-                            trade_pnl = -STOP_LOSS - FRICTION;
+                        if day_low <= sl_long {
+                            trade_pnl = (sl_long - entry) / entry - FRICTION;
                             break;
-                        } else if high_return >= TAKE_PROFIT {
-                            trade_pnl = TAKE_PROFIT - FRICTION;
+                        } else if day_high >= tp_long {
+                            trade_pnl = (tp_long - entry) / entry - FRICTION;
                             break;
                         }
 
                         if day == target.opens.len() - 1 {
-                            let close_return = (day_close - entry) / entry;
-                            trade_pnl = close_return - FRICTION;
+                            trade_pnl = (day_close - entry) / entry - FRICTION;
                         }
                     }
                     Decision::Short => {
-                        let high_return = (day_high - entry) / entry;
-                        let low_return = (day_low - entry) / entry;
-
-                        if high_return >= STOP_LOSS {
-                            trade_pnl = -STOP_LOSS - FRICTION;
+                        if day_high >= sl_short {
+                            trade_pnl = (entry - sl_short) / entry - FRICTION;
                             break;
-                        } else if -low_return >= TAKE_PROFIT {
-                            trade_pnl = TAKE_PROFIT - FRICTION;
+                        } else if day_low <= tp_short {
+                            trade_pnl = (entry - tp_short) / entry - FRICTION;
                             break;
                         }
 
                         if day == target.opens.len() - 1 {
-                            let close_return = (entry - day_close) / entry;
-                            trade_pnl = close_return - FRICTION;
+                            trade_pnl = (entry - day_close) / entry - FRICTION;
                         }
                     }
                     Decision::Neutral => unreachable!(),
@@ -185,14 +156,14 @@ impl Metric for ProfitLossMetric {
         };
 
         ValueMap::new()
-            .with(Self::TRADES_TAKEN_KEY, Value::Int(trades_taken as i64))
-            .with(Self::WIN_RATE_KEY, Value::Percent(win_rate))
-            .with(Self::TOTAL_RETURN_KEY, Value::Percent(total_return))
-            .with(Self::AVG_WIN_KEY, Value::Percent(avg_win))
-            .with(Self::AVG_LOSS_KEY, Value::Percent(avg_loss))
-            .with(Self::PROFIT_FACTOR_KEY, Value::Float(profit_factor))
-            .with(Self::EXPECTANCY_KEY, Value::Percent(expectancy))
-            .with(Self::SHARPE_KEY, Value::Float(sharpe))
+            .with("pnl_trades_taken", Value::Int(trades_taken as i64))
+            .with("pnl_win_rate", Value::Percent(win_rate))
+            .with("pnl_total_return", Value::Percent(total_return))
+            .with("pnl_avg_win", Value::Percent(avg_win))
+            .with("pnl_avg_loss", Value::Percent(avg_loss))
+            .with("pnl_profit_factor", Value::Float(profit_factor))
+            .with("pnl_expectancy", Value::Percent(expectancy))
+            .with("pnl_sharpe", Value::Float(sharpe))
     }
 }
 

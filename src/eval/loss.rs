@@ -14,27 +14,6 @@ use crate::utils::ValueMap;
 pub struct LossMetric;
 
 impl LossMetric {
-    /// Key for the direction loss.
-    pub const DIRECTION_LOSS_KEY: &'static str = "loss_direction";
-
-    /// Key for the strength loss.
-    pub const STRENGTH_LOSS_KEY: &'static str = "loss_strength";
-
-    /// Key for the quality loss.
-    pub const QUALITY_LOSS_KEY: &'static str = "loss_quality";
-
-    /// Key for the volatility loss.
-    pub const VOLATILITY_LOSS_KEY: &'static str = "loss_volatility";
-
-    /// Key for the decision loss.
-    pub const DECISION_LOSS_KEY: &'static str = "loss_decision";
-
-    /// Key for the calibration/confidence loss.
-    pub const CALIBRATION_LOSS_KEY: &'static str = "loss_calibration";
-
-    /// Key for the total loss.
-    pub const TOTAL_LOSS_KEY: &'static str = "loss_total";
-
     /// Base Mean Absolute Error for [-1.0, 1.0] bounded signals.
     #[inline]
     fn signed_loss(pred: f64, target: f64) -> f64 {
@@ -168,17 +147,6 @@ impl Metric for LossMetric {
     }
 
     fn compute(&self, result: &[MetricInput]) -> ValueMap {
-        if result.is_empty() {
-            return ValueMap::new()
-                .with(Self::DIRECTION_LOSS_KEY, 0.0)
-                .with(Self::STRENGTH_LOSS_KEY, 0.0)
-                .with(Self::QUALITY_LOSS_KEY, 0.0)
-                .with(Self::VOLATILITY_LOSS_KEY, 0.0)
-                .with(Self::DECISION_LOSS_KEY, 0.0)
-                .with(Self::CALIBRATION_LOSS_KEY, 0.0)
-                .with(Self::TOTAL_LOSS_KEY, 0.0);
-        }
-
         let mut direction_loss = 0.0;
         let mut strength_loss = 0.0;
         let mut quality_loss = 0.0;
@@ -189,49 +157,39 @@ impl Metric for LossMetric {
         for sample in result {
             let target = Self::target_from_stock(&sample.target);
 
-            let pred_direction = sample.score.get(TrendScore::DIRECTION_KEY).as_float();
-            let pred_direction_conf = sample.score.get(TrendScore::CONFIDENCE_KEY).as_float();
+            let trend = sample.engine.score::<TrendScore>();
+            let strength = sample.engine.score::<StrengthScore>();
+            let quality = sample.engine.score::<QualityScore>();
+            let volatility = sample.engine.score::<VolatilityScore>();
+            let final_score = sample.engine.score::<FinalScore>();
 
-            let pred_strength = sample.score.get(StrengthScore::STRENGTH_KEY).as_float();
-            let pred_strength_conf = sample.score.get(StrengthScore::CONFIDENCE_KEY).as_float();
-
-            let pred_quality = sample.score.get(QualityScore::QUALITY_KEY).as_float();
-            let pred_quality_conf = sample.score.get(QualityScore::CONFIDENCE_KEY).as_float();
-
-            let pred_volatility = sample.score.get(VolatilityScore::VOLATILITY_KEY).as_float();
-            let pred_volatility_conf = sample.score.get(VolatilityScore::CONFIDENCE_KEY).as_float();
-
-            let pred_final_score = sample.score.get(FinalScore::FINAL_SCORE_KEY).as_float();
-            let pred_final_confidence = sample
-                .score
-                .get(FinalScore::FINAL_SCORE_CONFIDENCE_KEY)
-                .as_float();
-
-            let pred_decision_str = sample
-                .score
-                .get(FinalScore::FINAL_SCORE_DECISION_KEY)
-                .as_str();
-            let pred_decision = match pred_decision_str.trim().to_ascii_uppercase().as_str() {
+            let pred_decision = match final_score.decision.trim().to_ascii_uppercase().as_str() {
                 "LONG" => Decision::Long,
                 "SHORT" => Decision::Short,
                 _ => Decision::Neutral,
             };
 
             let d_loss =
-                Self::weighted_signed_loss(pred_direction, target.direction, pred_direction_conf);
-            let s_loss =
-                Self::weighted_unsigned_loss(pred_strength, target.strength, pred_strength_conf);
-            let q_loss =
-                Self::weighted_unsigned_loss(pred_quality, target.quality, pred_quality_conf);
-            let v_loss = Self::weighted_unsigned_loss(
-                pred_volatility,
-                target.volatility,
-                pred_volatility_conf,
+                Self::weighted_signed_loss(trend.direction, target.direction, trend.confidence);
+
+            let s_loss = Self::weighted_unsigned_loss(
+                strength.strength,
+                target.strength,
+                strength.confidence,
             );
 
-            let dec_loss = Self::decision_loss(pred_decision, target.decision, pred_final_score);
+            let q_loss =
+                Self::weighted_unsigned_loss(quality.quality, target.quality, quality.confidence);
 
-            let c_loss = Self::unsigned_loss(pred_final_confidence, target.confidence);
+            let v_loss = Self::weighted_unsigned_loss(
+                volatility.volatility,
+                target.volatility,
+                volatility.confidence,
+            );
+
+            let dec_loss = Self::decision_loss(pred_decision, target.decision, final_score.score);
+
+            let c_loss = Self::unsigned_loss(final_score.confidence, target.confidence);
 
             direction_loss += d_loss;
             strength_loss += s_loss;
@@ -259,13 +217,13 @@ impl Metric for LossMetric {
             .clamp(0.0, 1.0);
 
         ValueMap::new()
-            .with(Self::DIRECTION_LOSS_KEY, direction_loss)
-            .with(Self::STRENGTH_LOSS_KEY, strength_loss)
-            .with(Self::QUALITY_LOSS_KEY, quality_loss)
-            .with(Self::VOLATILITY_LOSS_KEY, volatility_loss)
-            .with(Self::DECISION_LOSS_KEY, decision_loss)
-            .with(Self::CALIBRATION_LOSS_KEY, calibration_loss)
-            .with(Self::TOTAL_LOSS_KEY, total_loss)
+            .with("loss_direction", direction_loss)
+            .with("loss_strength", strength_loss)
+            .with("loss_quality", quality_loss)
+            .with("loss_volatility", volatility_loss)
+            .with("loss_decision", decision_loss)
+            .with("loss_calibration", calibration_loss)
+            .with("loss_total", total_loss)
     }
 }
 

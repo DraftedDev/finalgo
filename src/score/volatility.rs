@@ -2,7 +2,6 @@ use crate::engine::Context;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::boll::BollingerBands;
 use crate::score::Score;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Volatility Score
@@ -33,12 +32,6 @@ pub struct VolatilityScore {
 }
 
 impl VolatilityScore {
-    /// The key for the volatility score.
-    pub const VOLATILITY_KEY: &str = "volatility";
-
-    /// The key for the volatility score confidence.
-    pub const CONFIDENCE_KEY: &str = "volatility_confidence";
-
     /// Creates a new [VolatilityScore] instance.
     pub fn new() -> Self {
         Self {
@@ -90,7 +83,7 @@ impl Score for VolatilityScore {
         "volatility".to_string()
     }
 
-    fn compute(&mut self, ctx: Context) -> ValueMap {
+    fn compute(&mut self, ctx: Context) {
         let regime_vol = ctx.regime().volatility.clamp(0.0, 1.0);
 
         let atr = ctx.indicator::<AvgTrueRange<14>>();
@@ -112,18 +105,10 @@ impl Score for VolatilityScore {
         self.volatility = volatility;
         self.confidence = confidence;
         self.computed = true;
-
-        ValueMap::new()
-            .with(Self::VOLATILITY_KEY, self.volatility)
-            .with(Self::CONFIDENCE_KEY, self.confidence)
     }
 
     fn is_computed(&self) -> bool {
         self.computed
-    }
-
-    fn reset(&mut self) {
-        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

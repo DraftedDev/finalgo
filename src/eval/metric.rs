@@ -1,4 +1,5 @@
 use crate::data::StockData;
+use crate::engine::Engine;
 use crate::utils::ValueMap;
 
 /// A metric for evaluating the performance of the algorithm.
@@ -12,8 +13,8 @@ pub trait Metric: 'static {
 
 /// Input for the metric.
 pub struct MetricInput {
-    /// The score of the prediction as [ValueMap].
-    pub score: ValueMap,
+    /// The underlying engine of the computation.
+    pub engine: Engine,
 
     /// The target stock data.
     pub target: StockData,

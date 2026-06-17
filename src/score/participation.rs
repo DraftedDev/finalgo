@@ -2,7 +2,6 @@ use crate::engine::Context;
 use crate::indicator::rvol::RelativeVolume;
 use crate::math;
 use crate::score::Score;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Participation Score
@@ -39,12 +38,6 @@ pub struct ParticipationScore {
 }
 
 impl ParticipationScore {
-    /// The key for the participation score.
-    pub const PARTICIPATION_KEY: &str = "participation";
-
-    /// The key for the participation score confidence.
-    pub const CONFIDENCE_KEY: &str = "participation_confidence";
-
     /// Creates a new [ParticipationScore].
     pub fn new() -> Self {
         Self {
@@ -60,7 +53,7 @@ impl Score for ParticipationScore {
         "participation".to_string()
     }
 
-    fn compute(&mut self, ctx: Context) -> ValueMap {
+    fn compute(&mut self, ctx: Context) {
         let regime = ctx.regime();
         let rvol = ctx.indicator::<RelativeVolume<20>>();
 
@@ -87,18 +80,10 @@ impl Score for ParticipationScore {
         self.participation = participation;
         self.confidence = confidence;
         self.computed = true;
-
-        ValueMap::new()
-            .with(Self::PARTICIPATION_KEY, self.participation)
-            .with(Self::CONFIDENCE_KEY, self.confidence)
     }
 
     fn is_computed(&self) -> bool {
         self.computed
-    }
-
-    fn reset(&mut self) {
-        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

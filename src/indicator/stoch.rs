@@ -110,10 +110,6 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
         !self.k.is_empty()
     }
 
-    fn reset(&mut self) {
-        *self = Self::new();
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

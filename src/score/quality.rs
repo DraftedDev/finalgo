@@ -2,7 +2,6 @@ use crate::engine::Context;
 use crate::indicator::er::EfficiencyRatio;
 use crate::math;
 use crate::score::Score;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Quality Score
@@ -33,12 +32,6 @@ pub struct QualityScore {
 }
 
 impl QualityScore {
-    /// The key for the quality score.
-    pub const QUALITY_KEY: &'static str = "quality";
-
-    /// The key for the quality score confidence.
-    pub const CONFIDENCE_KEY: &'static str = "quality_confidence";
-
     /// Creates a new [QualityScore] instance.
     pub fn new() -> Self {
         Self {
@@ -54,7 +47,7 @@ impl Score for QualityScore {
         "quality".to_string()
     }
 
-    fn compute(&mut self, ctx: Context) -> ValueMap {
+    fn compute(&mut self, ctx: Context) {
         let regime = ctx.regime();
         let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
         let er_value = math::last_finite(&er.smooth).unwrap_or(0.0).clamp(0.0, 1.0);
@@ -92,18 +85,12 @@ impl Score for QualityScore {
         self.quality = base_quality;
         self.confidence = confidence;
         self.computed = true;
-
-        ValueMap::new()
-            .with(Self::QUALITY_KEY, self.quality)
-            .with(Self::CONFIDENCE_KEY, self.confidence)
     }
 
     fn is_computed(&self) -> bool {
         self.computed
     }
-    fn reset(&mut self) {
-        *self = Self::new();
-    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

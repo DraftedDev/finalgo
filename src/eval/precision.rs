@@ -10,61 +10,6 @@ use crate::utils::{Value, ValueMap};
 pub struct PrecisionMetric;
 
 impl PrecisionMetric {
-    /// Key for precision (%) of LONG predictions.
-    ///
-    /// ```text
-    /// correct_long / predicted_long
-    /// ```
-    pub const LONG_PRECISION_KEY: &str = "precision_long";
-
-    /// Key for precision (%) of SHORT predictions.
-    ///
-    /// ```text
-    /// correct_short / predicted_short
-    /// ```
-    pub const SHORT_PRECISION_KEY: &str = "precision_short";
-
-    /// Key for precision (%) of NEUTRAL predictions.
-    ///
-    /// ```text
-    /// correct_neutral / predicted_neutral
-    /// ```
-    pub const NEUTRAL_PRECISION_KEY: &str = "precision_neutral";
-
-    /// Key for overall accuracy (%) across all predictions.
-    ///
-    /// ```text
-    /// (correct_long + correct_short + correct_neutral) / total_predictions
-    /// ```
-    pub const OVERALL_PRECISION_KEY: &str = "precision_overall";
-
-    /// Key for the number of predictions classified as LONG.
-    pub const PRED_LONG_KEY: &str = "precision_predicted_long";
-
-    /// Key for the number of predictions classified as SHORT.
-    pub const PRED_SHORT_KEY: &str = "precision_predicted_short";
-
-    /// Key for the number of predictions classified as NEUTRAL.
-    pub const PRED_NEUTRAL_KEY: &str = "precision_predicted_neutral";
-
-    /// Key for the number of correctly predicted LONG samples.
-    pub const CORRECT_LONG_KEY: &str = "precision_correct_long";
-
-    /// Key for the number of correctly predicted SHORT samples.
-    pub const CORRECT_SHORT_KEY: &str = "precision_correct_short";
-
-    /// Key for the number of correctly predicted NEUTRAL samples.
-    pub const CORRECT_NEUTRAL_KEY: &str = "precision_correct_neutral";
-
-    /// Key for the number of target LONG samples.
-    pub const TARGET_LONG_KEY: &str = "precision_target_long";
-
-    /// Key for the number of target SHORT samples.
-    pub const TARGET_SHORT_KEY: &str = "precision_target_short";
-
-    /// Key for the number of target NEUTRAL samples.
-    pub const TARGET_NEUTRAL_KEY: &str = "precision_target_neutral";
-
     #[inline]
     fn target_decision(target: &StockData, dead_zone: f64) -> &'static str {
         assert!(
@@ -92,18 +37,6 @@ impl PrecisionMetric {
             "NEUTRAL"
         }
     }
-
-    #[inline]
-    fn predicted_decision(score: &ValueMap) -> &'static str {
-        let decision = score.get(FinalScore::FINAL_SCORE_DECISION_KEY).as_str();
-
-        match decision.to_ascii_uppercase().as_str() {
-            "LONG" => "LONG",
-            "SHORT" => "SHORT",
-            "NEUTRAL" => "NEUTRAL",
-            other => panic!("Unknown final_decision: {other}"),
-        }
-    }
 }
 
 impl Metric for PrecisionMetric {
@@ -125,7 +58,15 @@ impl Metric for PrecisionMetric {
         let mut target_neutral = 0usize;
 
         for input in result {
-            let pred = Self::predicted_decision(&input.score);
+            let decision = input.engine.score::<FinalScore>().decision.as_str();
+
+            let pred = match decision.to_ascii_uppercase().as_str() {
+                "LONG" => "LONG",
+                "SHORT" => "SHORT",
+                "NEUTRAL" => "NEUTRAL",
+                other => panic!("Unknown final_decision: {other}"),
+            };
+
             let target = Self::target_decision(&input.target, TARGET_DEAD_ZONE);
 
             match pred {
@@ -179,27 +120,33 @@ impl Metric for PrecisionMetric {
         };
 
         ValueMap::new()
-            .with(Self::LONG_PRECISION_KEY, Value::Percent(long_precision))
-            .with(Self::SHORT_PRECISION_KEY, Value::Percent(short_precision))
+            .with("precision_long", Value::Percent(long_precision))
+            .with("precision_short", Value::Percent(short_precision))
+            .with("precision_neutral", Value::Percent(neutral_precision))
+            .with("precision_overall", Value::Percent(overall_precision))
             .with(
-                Self::NEUTRAL_PRECISION_KEY,
-                Value::Percent(neutral_precision),
+                "precision_predicted_long",
+                Value::Int(predicted_long as i64),
             )
             .with(
-                Self::OVERALL_PRECISION_KEY,
-                Value::Percent(overall_precision),
+                "precision_predicted_short",
+                Value::Int(predicted_short as i64),
             )
-            .with(Self::PRED_LONG_KEY, Value::Int(predicted_long as i64))
-            .with(Self::PRED_SHORT_KEY, Value::Int(predicted_short as i64))
-            .with(Self::PRED_NEUTRAL_KEY, Value::Int(predicted_neutral as i64))
-            .with(Self::CORRECT_LONG_KEY, Value::Int(correct_long as i64))
-            .with(Self::CORRECT_SHORT_KEY, Value::Int(correct_short as i64))
             .with(
-                Self::CORRECT_NEUTRAL_KEY,
+                "precision_predicted_neutral",
+                Value::Int(predicted_neutral as i64),
+            )
+            .with("precision_correct_long", Value::Int(correct_long as i64))
+            .with("precision_correct_short", Value::Int(correct_short as i64))
+            .with(
+                "precision_correct_neutral",
                 Value::Int(correct_neutral as i64),
             )
-            .with(Self::TARGET_LONG_KEY, Value::Int(target_long as i64))
-            .with(Self::TARGET_SHORT_KEY, Value::Int(target_short as i64))
-            .with(Self::TARGET_NEUTRAL_KEY, Value::Int(target_neutral as i64))
+            .with("precision_target_long", Value::Int(target_long as i64))
+            .with("precision_target_short", Value::Int(target_short as i64))
+            .with(
+                "precision_target_neutral",
+                Value::Int(target_neutral as i64),
+            )
     }
 }

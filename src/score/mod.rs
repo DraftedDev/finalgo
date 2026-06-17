@@ -1,5 +1,4 @@
 use crate::engine::Context;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// Contains the [final_score::FinalScore] score.
@@ -28,13 +27,10 @@ pub trait Score: 'static {
         Self: Sized;
 
     /// Computes the score.
-    fn compute(&mut self, ctx: Context) -> ValueMap;
+    fn compute(&mut self, ctx: Context);
 
     /// Returns true if the score has been computed.
     fn is_computed(&self) -> bool;
-
-    /// Resets the internal score data.
-    fn reset(&mut self);
 
     /// Returns a reference to the score as an [Any].
     fn as_any(&self) -> &dyn Any;

@@ -137,10 +137,6 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for EfficiencyRatio<PER
         !self.er.is_empty()
     }
 
-    fn reset(&mut self) {
-        *self = Self::new();
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

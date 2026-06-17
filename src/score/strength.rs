@@ -5,7 +5,6 @@ use crate::indicator::rvol::RelativeVolume;
 use crate::indicator::swing::SwingStructure;
 use crate::math;
 use crate::score::Score;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Strength Score
@@ -36,12 +35,6 @@ pub struct StrengthScore {
 }
 
 impl StrengthScore {
-    /// The key for the strength score.
-    pub const STRENGTH_KEY: &'static str = "strength";
-
-    /// The key for the strength score confidence.
-    pub const CONFIDENCE_KEY: &'static str = "strength_confidence";
-
     /// Creates a new [StrengthScore] instance.
     pub fn new() -> Self {
         Self {
@@ -57,7 +50,7 @@ impl Score for StrengthScore {
         "strength".to_string()
     }
 
-    fn compute(&mut self, ctx: Context) -> ValueMap {
+    fn compute(&mut self, ctx: Context) {
         let roc = ctx.indicator::<RateOfChange<10>>();
         let atr = ctx.indicator::<AvgTrueRange<14>>();
         let swing = ctx.indicator::<SwingStructure<5, 10>>();
@@ -93,18 +86,10 @@ impl Score for StrengthScore {
         self.strength = strength;
         self.confidence = confidence;
         self.computed = true;
-
-        ValueMap::new()
-            .with(Self::STRENGTH_KEY, self.strength)
-            .with(Self::CONFIDENCE_KEY, self.confidence)
     }
 
     fn is_computed(&self) -> bool {
         self.computed
-    }
-
-    fn reset(&mut self) {
-        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

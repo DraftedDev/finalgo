@@ -89,10 +89,6 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
         !self.values.is_empty()
     }
 
-    fn reset(&mut self) {
-        *self = Self::new();
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

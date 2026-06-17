@@ -247,10 +247,6 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
         !self.bos.is_empty()
     }
 
-    fn reset(&mut self) {
-        *self = Self::new();
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

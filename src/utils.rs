@@ -183,15 +183,6 @@ impl ValueMap {
         self
     }
 
-    /// Get a field from the [ValueMap].
-    ///
-    /// Panics if the field does not exist.
-    pub fn get(&self, key: &str) -> &Value {
-        self.fields
-            .get(key)
-            .unwrap_or_else(|| panic!("Failed to get field value '{key}'"))
-    }
-
     /// Merges another [ValueMap] into this one.
     ///
     /// Panics if a field already exists.
@@ -203,13 +194,6 @@ impl ValueMap {
                 .expect("Failed to get field value");
             self.add(key, value);
         }
-    }
-
-    /// Iterates over the [ValueMap].
-    ///
-    /// This does not iterate in insertions order.
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Value)> {
-        self.fields.iter()
     }
 }
 
@@ -250,50 +234,6 @@ pub enum Value {
 
     /// A string value.
     String(String),
-}
-
-impl Value {
-    /// Returns the value as a float.
-    ///
-    /// Panics if the value is not a float.
-    pub fn as_float(&self) -> f64 {
-        match self {
-            Value::Float(f) => *f,
-            _ => panic!("Value not a float"),
-        }
-    }
-
-    /// Returns the value as a percentage.
-    ///
-    /// Panics if the value is not a percentage.
-    #[allow(unused)]
-    pub fn as_percent(&self) -> f64 {
-        match self {
-            Value::Percent(p) => *p,
-            _ => panic!("Value not percentage"),
-        }
-    }
-
-    /// Returns the value as an integer.
-    ///
-    /// Panics if the value is not an integer.
-    #[allow(unused)]
-    pub fn as_int(&self) -> i64 {
-        match self {
-            Value::Int(i) => *i,
-            _ => panic!("Value not int"),
-        }
-    }
-
-    /// Returns the value as a `&str`.
-    ///
-    /// Panics if the value is not a string.
-    pub fn as_str(&self) -> &str {
-        match self {
-            Value::String(s) => s.as_str(),
-            _ => panic!("Value not string"),
-        }
-    }
 }
 
 impl Display for Value {

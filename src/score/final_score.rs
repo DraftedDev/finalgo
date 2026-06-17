@@ -5,7 +5,6 @@ use crate::score::quality::QualityScore;
 use crate::score::strength::StrengthScore;
 use crate::score::trend::TrendScore;
 use crate::score::volatility::VolatilityScore;
-use crate::utils::ValueMap;
 use std::any::Any;
 
 /// # Final Score
@@ -19,15 +18,6 @@ pub struct FinalScore {
 }
 
 impl FinalScore {
-    /// The key for the final score.
-    pub const FINAL_SCORE_KEY: &str = "final_score";
-
-    /// The key for the final score confidence.
-    pub const FINAL_SCORE_CONFIDENCE_KEY: &str = "final_confidence";
-
-    /// The key for the final decision.
-    pub const FINAL_SCORE_DECISION_KEY: &str = "final_decision";
-
     /// Creates a new empty [FinalScore] instance.
     pub fn new() -> Self {
         Self {
@@ -44,7 +34,7 @@ impl Score for FinalScore {
         "final".to_string()
     }
 
-    fn compute(&mut self, ctx: Context) -> ValueMap {
+    fn compute(&mut self, ctx: Context) {
         let trend = ctx.score::<TrendScore>();
         let strength = ctx.score::<StrengthScore>();
         let volatility = ctx.score::<VolatilityScore>();
@@ -120,19 +110,10 @@ impl Score for FinalScore {
         self.score = final_score;
         self.confidence = confidence;
         self.computed = true;
-
-        ValueMap::new()
-            .with(Self::FINAL_SCORE_KEY, self.score)
-            .with(Self::FINAL_SCORE_CONFIDENCE_KEY, self.confidence)
-            .with(Self::FINAL_SCORE_DECISION_KEY, self.decision.clone())
     }
 
     fn is_computed(&self) -> bool {
         self.computed
-    }
-
-    fn reset(&mut self) {
-        *self = Self::new();
     }
 
     fn as_any(&self) -> &dyn Any {

@@ -154,10 +154,6 @@ impl<const PERIOD: usize, const STD_MULTI: i32> Indicator for BollingerBands<PER
         !self.width.is_empty()
     }
 
-    fn reset(&mut self) {
-        *self = Self::new();
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

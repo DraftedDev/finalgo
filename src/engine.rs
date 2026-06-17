@@ -4,6 +4,7 @@ use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::boll::BollingerBands;
 use crate::indicator::ema::ExpMovAvg;
 use crate::indicator::er::EfficiencyRatio;
+use crate::indicator::exits::DynamicExits;
 use crate::indicator::roc::RateOfChange;
 use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::rvol::RelativeVolume;
@@ -16,7 +17,7 @@ use crate::score::quality::QualityScore;
 use crate::score::strength::StrengthScore;
 use crate::score::trend::TrendScore;
 use crate::score::volatility::VolatilityScore;
-use crate::utils::{FastMap, ValueMap};
+use crate::utils::FastMap;
 
 /// Builds the engine with complete set of indicators and scores.
 pub fn build() -> Engine {
@@ -33,6 +34,7 @@ pub fn build() -> Engine {
     engine.add_indicator(SwingStructure::<10, 10>::new());
     engine.add_indicator(RelativeVolume::<20>::new());
     engine.add_indicator(RelStrengthIdx::<14>::new());
+    engine.add_indicator(DynamicExits::new());
 
     engine.add_score(TrendScore::new());
     engine.add_score(StrengthScore::new());
@@ -89,6 +91,25 @@ impl Engine {
         self.run_indicators.push(name);
     }
 
+    /// Returns the indicator with the given type.
+    ///
+    /// Panics if the indicator is not found or has not been computed yet.
+    pub fn indicator<I: Indicator>(&self) -> &I {
+        let name = I::name();
+
+        let ind = self
+            .indicators
+            .get(&name)
+            .unwrap_or_else(|| panic!("Indicator {name} not found"))
+            .as_any()
+            .downcast_ref::<I>()
+            .unwrap();
+
+        assert!(ind.is_computed(), "Indicator {name} not computed");
+
+        ind
+    }
+
     /// Adds a score to the engine.
     ///
     /// Panics if the score is already registered.
@@ -103,11 +124,30 @@ impl Engine {
         self.run_scores.push(name);
     }
 
+    /// Returns the score with the given type.
+    ///
+    /// Panics if the score is not found or has not been computed yet.
+    pub fn score<S: Score>(&self) -> &S {
+        let name = S::name();
+
+        let score = self
+            .scores
+            .get(&name)
+            .unwrap_or_else(|| panic!("Score {name} not found"))
+            .as_any()
+            .downcast_ref::<S>()
+            .unwrap();
+
+        assert!(score.is_computed(), "Score {name} not computed");
+
+        score
+    }
+
     /// Executes the algorithm with the given [StockData].
     ///
     /// Panics if the data is empty.
     #[tracing::instrument(skip_all)]
-    pub fn compute(&mut self, traces: bool, data: &StockData) -> ValueMap {
+    pub fn compute(&mut self, traces: bool, data: &StockData) {
         assert!(!data.highs.is_empty(), "Highs must not be empty");
         assert!(!data.lows.is_empty(), "Lows must not be empty");
         assert!(!data.opens.is_empty(), "Opens must not be empty");
@@ -144,8 +184,6 @@ impl Engine {
             tracing::info!("Building {} scores...", self.scores.len());
         }
 
-        let mut result = ValueMap::new();
-
         for name in &self.run_scores {
             let mut score = self.scores.remove(name).unwrap();
 
@@ -157,23 +195,9 @@ impl Engine {
                 panic!("Score {name} already computed!");
             }
 
-            let new_result = score.compute(self.context(data));
+            score.compute(self.context(data));
 
-            result.merge(new_result);
             self.scores.insert(name.clone(), score);
-        }
-
-        result
-    }
-
-    /// Resets the internal indicator and score states.
-    pub fn reset(&mut self) {
-        for ind in self.indicators.values_mut() {
-            ind.reset();
-        }
-
-        for score in self.scores.values_mut() {
-            score.reset();
         }
     }
 }
@@ -197,41 +221,15 @@ impl<'a> Context<'a> {
 
     /// Returns the indicator with the given type.
     ///
-    /// Panics if the indicator is not found or has not been computed yet.
+    /// See [Engine::indicator].
     pub fn indicator<I: Indicator>(&self) -> &I {
-        let name = I::name();
-
-        let ind = self
-            .engine
-            .indicators
-            .get(&name)
-            .unwrap_or_else(|| panic!("Indicator {name} not found"))
-            .as_any()
-            .downcast_ref::<I>()
-            .unwrap();
-
-        assert!(ind.is_computed(), "Indicator {name} not computed");
-
-        ind
+        self.engine.indicator()
     }
 
     /// Returns the score with the given type.
     ///
-    /// Panics if the score is not found or has not been computed yet.
+    /// See [Engine::score].
     pub fn score<S: Score>(&self) -> &S {
-        let name = S::name();
-
-        let score = self
-            .engine
-            .scores
-            .get(&name)
-            .unwrap_or_else(|| panic!("Score {name} not found"))
-            .as_any()
-            .downcast_ref::<S>()
-            .unwrap();
-
-        assert!(score.is_computed(), "Score {name} not computed");
-
-        score
+        self.engine.score()
     }
 }

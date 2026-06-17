@@ -1,5 +1,4 @@
 use crate::data::StockData;
-use crate::engine::Engine;
 use crate::eval::loss::LossMetric;
 use crate::eval::metric::{Metric, MetricInput};
 use crate::eval::precision::PrecisionMetric;
@@ -41,7 +40,6 @@ pub fn build(stats: bool) -> Evaluator {
 
 /// The evaluator struct for evaluating the engine algorithm.
 pub struct Evaluator {
-    engine: Engine,
     metrics: FastMap<String, Box<dyn Metric>>,
 }
 
@@ -51,7 +49,6 @@ impl Evaluator {
     /// It's recommended to use the [build] function instead of this constructor.
     pub fn new() -> Self {
         Self {
-            engine: engine::build(),
             metrics: FastMap::with_capacity_and_hasher(16, Default::default()),
         }
     }
@@ -75,10 +72,11 @@ impl Evaluator {
             let mut results = Vec::with_capacity(samples.len());
 
             for (data, target) in samples {
-                let score = self.engine.compute(false, &data);
-                self.engine.reset();
+                let mut engine = engine::build();
 
-                results.push(MetricInput { score, target });
+                engine.compute(false, &data);
+
+                results.push(MetricInput { engine, target });
 
                 span.pb_inc(1);
             }

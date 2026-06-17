@@ -1,6 +1,6 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataCache, DataKey, StockData};
-use crate::eval::profit::{STOP_LOSS, TAKE_PROFIT};
+use crate::math;
 use crate::score::final_score::FinalScore;
 use crate::{engine, eval, utils};
 use clap::Parser;
@@ -34,36 +34,43 @@ impl Cli {
         .await;
 
         let mut engine = engine::build();
-        let score = engine.compute(true, &data);
+        engine.compute(true, &data);
 
-        if args.trade {
-            let decision = score.get(FinalScore::FINAL_SCORE_DECISION_KEY).as_str();
-            let entry_price = data.closes.last().copied().unwrap_or(0.0);
+        let score = engine.score::<FinalScore>();
+        let entry_price = data.closes.last().copied().unwrap_or(0.0);
 
-            tracing::info!("[######################### TRADE #########################]");
-            tracing::info!("Ticker: {}", args.ticker);
-            tracing::info!("Decision: {}", decision);
-            tracing::info!("Predicted Target Date: {}", target_end_str);
+        let exits = engine.indicator::<crate::indicator::exits::DynamicExits>();
+        let last_idx = data.closes.len() - 1;
 
-            if decision == "LONG" {
-                let sl = entry_price * (1.0 - STOP_LOSS);
-                let tp = entry_price * (1.0 + TAKE_PROFIT);
+        tracing::info!("[######################### TRADE #########################]");
+        tracing::info!("Ticker: {}", args.ticker);
+        tracing::info!("Confidence: {}", math::round_to(score.confidence, 2));
+        tracing::info!("Score: {}", math::round_to(score.score, 2));
+        tracing::info!("Decision: {}", score.decision);
+        tracing::info!("Predicted Target Date: {}", target_end_str);
 
-                tracing::info!("Entry: ${:.2}", entry_price);
-                tracing::info!("Stop Loss: ${:.2} (-{:.0}%)", sl, STOP_LOSS * 100.0);
-                tracing::info!("Take Profit: ${:.2} (+{:.0}%)", tp, TAKE_PROFIT * 100.0);
-            } else if decision == "SHORT" {
-                let sl = entry_price * (1.0 + STOP_LOSS);
-                let tp = entry_price * (1.0 - TAKE_PROFIT);
+        if score.decision.as_str() == "LONG" {
+            let sl = exits.stop_loss_long[last_idx];
+            let tp = exits.take_profit_long[last_idx];
 
-                tracing::info!("Entry: ${:.2}", entry_price);
-                tracing::info!("Stop Loss: ${:.2} (+{:.0}%)", sl, STOP_LOSS * 100.0);
-                tracing::info!("Take Profit: ${:.2} (-{:.0}%)", tp, TAKE_PROFIT * 100.0);
-            } else {
-                tracing::info!("--- NO TRADE ---");
-            }
+            let sl_pct = (entry_price - sl) / entry_price * 100.0;
+            let tp_pct = (tp - entry_price) / entry_price * 100.0;
+
+            tracing::info!("Entry: ${:.2}", entry_price);
+            tracing::info!("Stop Loss: ${:.2} (-{:.2}%)", sl, sl_pct);
+            tracing::info!("Take Profit: ${:.2} (+{:.2}%)", tp, tp_pct);
+        } else if score.decision.as_str() == "SHORT" {
+            let sl = exits.stop_loss_short[last_idx];
+            let tp = exits.take_profit_short[last_idx];
+
+            let sl_pct = (sl - entry_price) / entry_price * 100.0;
+            let tp_pct = (entry_price - tp) / entry_price * 100.0;
+
+            tracing::info!("Entry: ${:.2}", entry_price);
+            tracing::info!("Stop Loss: ${:.2} (+{:.2}%)", sl, sl_pct);
+            tracing::info!("Take Profit: ${:.2} (-{:.2}%)", tp, tp_pct);
         } else {
-            tracing::info!("[######################### SCORE #########################]\n{score}");
+            tracing::info!("--- NO TRADE ---");
         }
     }
 
@@ -191,9 +198,6 @@ pub enum Subcommand {
 /// Arguments for the run command.
 #[derive(Clone, Debug, Parser)]
 pub struct RunArgs {
-    /// Output only trade-relevant information.
-    #[arg(long = "trade", short = 't')]
-    pub trade: bool,
     /// The target date to predict for.
     pub target: String,
     /// The ticker to use.

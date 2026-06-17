@@ -29,6 +29,9 @@ pub mod stoch;
 /// Contains the [swing::SwingStructure] indicator.
 pub mod swing;
 
+/// Contains the [exits::DynamicExits] indicator.
+pub mod exits;
+
 /// A market indicator that may depend on OHLCV data or other indicators.
 pub trait Indicator: 'static {
     /// The name of the indicator.
@@ -41,9 +44,6 @@ pub trait Indicator: 'static {
 
     /// Returns true if the indicator has been computed.
     fn is_computed(&self) -> bool;
-
-    /// Reset the indicator data.
-    fn reset(&mut self);
 
     /// Returns a reference to the indicator as an [Any].
     fn as_any(&self) -> &dyn Any;
