@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 /// The candle look back period.
 ///
 /// Fetched prediction stock data will have roughly this many candles.

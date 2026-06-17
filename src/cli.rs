@@ -1,5 +1,5 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
-use crate::data::{DataKey, StockData};
+use crate::data::{DataCache, DataKey, StockData};
 use crate::database::Database;
 use crate::eval::profit::{STOP_LOSS, TAKE_PROFIT};
 use crate::score::final_score::FinalScore;
@@ -44,7 +44,7 @@ impl Cli {
             tracing::info!("[######################### TRADE #########################]");
             tracing::info!("Ticker: {}", args.ticker);
             tracing::info!("Decision: {}", decision);
-            tracing::info!("Predicted Target Date: {}", target_end_str); // <--- NEW LINE
+            tracing::info!("Predicted Target Date: {}", target_end_str);
 
             if decision == "LONG" {
                 let sl = entry_price * (1.0 - STOP_LOSS);
@@ -83,8 +83,12 @@ impl Cli {
 
         let mut data = Vec::with_capacity(args.samples * args.tickers.len());
 
+        let first_t = t;
+        let mut last_target_end = t;
+
         for _ in 0..args.samples {
             let target_end = utils::add_naive_date(t, TARGET_HORIZON);
+            last_target_end = target_end;
 
             for ticker in &args.tickers {
                 data.push((t, target_end, ticker.clone()));
@@ -93,10 +97,30 @@ impl Cli {
             t = utils::add_naive_date(t, 1);
         }
 
+        let absolute_start = utils::subtract_naive_date(first_t, CANDLE_LOOK_BACK);
+        let absolute_end = last_target_end;
+
+        let mut cache = DataCache::new();
+
+        let client = Arc::new(utils::client());
+
+        tracing::info!("Pre-fetching data into cache...");
+        for ticker in &args.tickers {
+            cache
+                .fetch_range(
+                    &client,
+                    ticker.clone(),
+                    utils::format_naive_date(absolute_start),
+                    utils::format_naive_date(absolute_end),
+                )
+                .await;
+        }
+
+        let cache = Arc::new(cache);
+
         let fetched =
             utils::with_progress_async("Fetching", data.len() as u64, |span| async move {
                 let database = Database::new();
-                let client = Arc::new(utils::client());
                 let mut fetched = Vec::with_capacity(data.len());
 
                 for chunk in data.chunks(FETCH_CHUNK_SIZE) {
@@ -105,11 +129,13 @@ impl Cli {
                     for (t, t_target, ticker) in chunk.iter().cloned() {
                         let mut database = database.clone();
                         let client = client.clone();
+                        let cache = cache.clone();
                         let span = span.clone();
 
                         set.spawn(async move {
                             let predict = StockData::fetch(
                                 &mut database,
+                                &cache,
                                 &client,
                                 DataKey {
                                     end: utils::format_naive_date(t),
@@ -121,6 +147,7 @@ impl Cli {
 
                             let target = StockData::fetch(
                                 &mut database,
+                                &cache,
                                 &client,
                                 DataKey {
                                     end: utils::format_naive_date(t_target),
@@ -136,7 +163,6 @@ impl Cli {
                             );
 
                             span.pb_inc(1);
-
                             (predict, target)
                         });
                     }
