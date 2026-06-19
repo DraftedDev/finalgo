@@ -28,9 +28,6 @@ mod indicator;
 /// Contains basic math utility functions.
 mod math;
 
-/// Contains the market regime computation logic.
-mod regime;
-
 /// Contains the score interface and score modules.
 mod score;
 

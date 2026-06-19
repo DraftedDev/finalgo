@@ -1,19 +1,19 @@
 use crate::eval::metric::{Metric, MetricInput};
 use crate::indicator::exits::DynamicExits;
-use crate::score::final_score::FinalScore;
+use crate::score::final_score::{Decision, FinalScore};
 use crate::utils::{Value, ValueMap};
-use std::f64;
 
-/// 20 basis points round-trip (10 bps entry + 10bps exit).
-const FRICTION: f64 = 0.002;
+/// 50 basis points round-trip (25 bps entry + 25 bps exit).
+const FRICTION: f64 = 0.005;
+
+/// Scaling factor to make the Alpha Score human-readable.
+const ALPHA_SCALE: f64 = 30_000.0;
 
 /// # Profit-Loss Metric
 ///
-/// Computes the average profit/loss per trade and a few more statistics
-/// to evaluate the performance of the algorithm in terms of profit/loss.
+/// Computes trading stats to eval the performance of the algorithm in terms of profit/loss.
 ///
-/// Uses the [DynamicExits] indicator for volatility-normalized (ATR-based)
-/// Take-Profit and Stop-Loss levels, ensuring multi-asset compatibility.
+/// Uses the [DynamicExits] indicator for ATR-based Take-Profit and Stop-Loss distances.
 pub struct ProfitLossMetric;
 
 impl Metric for ProfitLossMetric {
@@ -30,77 +30,106 @@ impl Metric for ProfitLossMetric {
         let mut gross_loss = 0.0;
         let mut total_return = 0.0;
 
-        let mut trade_returns: Vec<f64> = Vec::new();
+        let mut count = 0;
+        let mut mean = 0.0;
+        let mut m2 = 0.0;
 
         for sample in result {
-            let decision_str = sample.engine.score::<FinalScore>().decision.as_str();
-
-            let decision = match decision_str.trim().to_ascii_uppercase().as_str() {
-                "LONG" => Decision::Long,
-                "SHORT" => Decision::Short,
-                _ => Decision::Neutral,
-            };
+            let decision = sample.engine.score::<FinalScore>().decision;
 
             if decision == Decision::Neutral {
                 continue;
             }
 
-            trades_taken += 1;
             let target = &sample.target;
-            let entry = target.opens[0];
+            if target.opens.is_empty() {
+                continue;
+            }
 
-            if entry.abs() < 1e-12 {
+            let entry = target.opens[0];
+            if !entry.is_finite() || entry.abs() < 1e-12 {
                 continue;
             }
 
             let exits = sample.engine.indicator::<DynamicExits>();
-            let last_idx = exits.stop_loss_long.len() - 1;
+            if exits.sl_distance.is_empty() {
+                continue;
+            }
+            let last_idx = exits.sl_distance.len() - 1;
 
-            let sl_long = exits.stop_loss_long[last_idx];
-            let tp_long = exits.take_profit_long[last_idx];
-            let sl_short = exits.stop_loss_short[last_idx];
-            let tp_short = exits.take_profit_short[last_idx];
+            let sl_dist = exits.sl_distance[last_idx];
+            let tp_dist = exits.tp_distance[last_idx];
 
             let mut trade_pnl = 0.0;
+            let mut exited = false;
 
             for day in 0..target.opens.len() {
+                let day_open = target.opens[day];
                 let day_high = target.highs[day];
                 let day_low = target.lows[day];
                 let day_close = target.closes[day];
 
                 match decision {
                     Decision::Long => {
-                        if day_low <= sl_long {
-                            trade_pnl = (sl_long - entry) / entry - FRICTION;
+                        let actual_sl = entry - sl_dist;
+                        let actual_tp = entry + tp_dist;
+
+                        if day_open <= actual_sl || day_open >= actual_tp {
+                            trade_pnl = (day_open - entry) / entry - FRICTION;
+                            exited = true;
                             break;
-                        } else if day_high >= tp_long {
-                            trade_pnl = (tp_long - entry) / entry - FRICTION;
+                        }
+
+                        if day_low <= actual_sl {
+                            trade_pnl = (actual_sl - entry) / entry - FRICTION;
+                            exited = true;
+                            break;
+                        } else if day_high >= actual_tp {
+                            trade_pnl = (actual_tp - entry) / entry - FRICTION;
+                            exited = true;
                             break;
                         }
 
                         if day == target.opens.len() - 1 {
                             trade_pnl = (day_close - entry) / entry - FRICTION;
+                            exited = true;
                         }
                     }
                     Decision::Short => {
-                        if day_high >= sl_short {
-                            trade_pnl = (entry - sl_short) / entry - FRICTION;
+                        let actual_sl = entry + sl_dist;
+                        let actual_tp = entry - tp_dist;
+
+                        if day_open >= actual_sl || day_open <= actual_tp {
+                            trade_pnl = (entry - day_open) / entry - FRICTION;
+                            exited = true;
                             break;
-                        } else if day_low <= tp_short {
-                            trade_pnl = (entry - tp_short) / entry - FRICTION;
+                        }
+
+                        if day_high >= actual_sl {
+                            trade_pnl = (entry - actual_sl) / entry - FRICTION;
+                            exited = true;
+                            break;
+                        } else if day_low <= actual_tp {
+                            trade_pnl = (entry - actual_tp) / entry - FRICTION;
+                            exited = true;
                             break;
                         }
 
                         if day == target.opens.len() - 1 {
                             trade_pnl = (entry - day_close) / entry - FRICTION;
+                            exited = true;
                         }
                     }
                     Decision::Neutral => unreachable!(),
                 }
             }
 
+            if !exited {
+                continue;
+            }
+
+            trades_taken += 1;
             total_return += trade_pnl;
-            trade_returns.push(trade_pnl);
 
             if trade_pnl > 0.0 {
                 wins += 1;
@@ -109,6 +138,12 @@ impl Metric for ProfitLossMetric {
                 losses += 1;
                 gross_loss += trade_pnl.abs();
             }
+
+            count += 1;
+            let delta = trade_pnl - mean;
+            mean += delta / count as f64;
+            let delta2 = trade_pnl - mean;
+            m2 += delta * delta2;
         }
 
         let win_rate = if trades_taken > 0 {
@@ -138,22 +173,38 @@ impl Metric for ProfitLossMetric {
             0.0
         };
 
-        let mean_return = expectancy;
-        let variance = if trades_taken > 1 {
-            trade_returns
-                .iter()
-                .map(|r| (r - mean_return).powi(2))
-                .sum::<f64>()
-                / (trades_taken - 1) as f64
+        let variance = if count > 1 {
+            m2 / (count - 1) as f64
         } else {
             0.0
         };
         let std_dev = variance.sqrt();
         let sharpe = if std_dev > 1e-9 {
-            (mean_return / std_dev) * (52.0_f64.sqrt())
+            (mean / std_dev) * (52.0_f64.sqrt())
         } else {
             0.0
         };
+
+        let total_samples = result.len();
+        let trade_frequency = if total_samples > 0 {
+            trades_taken as f64 / total_samples as f64
+        } else {
+            0.0
+        };
+
+        let mut alpha_score = 0.0;
+
+        let is_valid = trade_frequency >= 0.15
+            && profit_factor >= 1.10
+            && avg_win > FRICTION
+            && win_rate > 0.3333
+            && sharpe > 0.0;
+
+        if is_valid {
+            let capped_pf = profit_factor.min(5.0);
+            let raw_alpha = expectancy * (capped_pf - 1.0) * trade_frequency * sharpe;
+            alpha_score = raw_alpha * ALPHA_SCALE;
+        }
 
         ValueMap::new()
             .with("pnl_trades_taken", Value::Int(trades_taken as i64))
@@ -164,12 +215,6 @@ impl Metric for ProfitLossMetric {
             .with("pnl_profit_factor", Value::Float(profit_factor))
             .with("pnl_expectancy", Value::Percent(expectancy))
             .with("pnl_sharpe", Value::Float(sharpe))
+            .with("pnl_alpha_score", Value::Float(alpha_score))
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Decision {
-    Long,
-    Short,
-    Neutral,
 }

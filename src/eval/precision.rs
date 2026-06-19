@@ -1,7 +1,7 @@
 use crate::consts::TARGET_DEAD_ZONE;
 use crate::data::StockData;
 use crate::eval::metric::{Metric, MetricInput};
-use crate::score::final_score::FinalScore;
+use crate::score::final_score::{Decision, FinalScore};
 use crate::utils::{Value, ValueMap};
 
 /// # Precision Metric
@@ -11,7 +11,7 @@ pub struct PrecisionMetric;
 
 impl PrecisionMetric {
     #[inline]
-    fn target_decision(target: &StockData, dead_zone: f64) -> &'static str {
+    fn target_decision(target: &StockData, dead_zone: f64) -> Decision {
         assert!(
             !target.opens.is_empty() && !target.closes.is_empty(),
             "Target data must contain the 7-day window"
@@ -30,11 +30,11 @@ impl PrecisionMetric {
         };
 
         if ret > dead_zone {
-            "LONG"
+            Decision::Long
         } else if ret < -dead_zone {
-            "SHORT"
+            Decision::Short
         } else {
-            "NEUTRAL"
+            Decision::Neutral
         }
     }
 }
@@ -58,37 +58,27 @@ impl Metric for PrecisionMetric {
         let mut target_neutral = 0usize;
 
         for input in result {
-            let decision = input.engine.score::<FinalScore>().decision.as_str();
-
-            let pred = match decision.to_ascii_uppercase().as_str() {
-                "LONG" => "LONG",
-                "SHORT" => "SHORT",
-                "NEUTRAL" => "NEUTRAL",
-                other => panic!("Unknown final_decision: {other}"),
-            };
+            let pred = input.engine.score::<FinalScore>().decision;
 
             let target = Self::target_decision(&input.target, TARGET_DEAD_ZONE);
 
             match pred {
-                "LONG" => predicted_long += 1,
-                "SHORT" => predicted_short += 1,
-                "NEUTRAL" => predicted_neutral += 1,
-                _ => unreachable!(),
+                Decision::Long => predicted_long += 1,
+                Decision::Short => predicted_short += 1,
+                Decision::Neutral => predicted_neutral += 1,
             }
 
             match target {
-                "LONG" => target_long += 1,
-                "SHORT" => target_short += 1,
-                "NEUTRAL" => target_neutral += 1,
-                _ => unreachable!(),
+                Decision::Long => target_long += 1,
+                Decision::Short => target_short += 1,
+                Decision::Neutral => target_neutral += 1,
             }
 
             if pred == target {
                 match pred {
-                    "LONG" => correct_long += 1,
-                    "SHORT" => correct_short += 1,
-                    "NEUTRAL" => correct_neutral += 1,
-                    _ => unreachable!(),
+                    Decision::Long => correct_long += 1,
+                    Decision::Short => correct_short += 1,
+                    Decision::Neutral => correct_neutral += 1,
                 }
             }
         }

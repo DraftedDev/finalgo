@@ -1,7 +1,7 @@
 use crate::consts::TARGET_DEAD_ZONE;
 use crate::data::StockData;
 use crate::eval::metric::{Metric, MetricInput};
-use crate::score::final_score::FinalScore;
+use crate::score::final_score::{Decision, FinalScore};
 use crate::score::quality::QualityScore;
 use crate::score::strength::StrengthScore;
 use crate::score::trend::TrendScore;
@@ -163,12 +163,6 @@ impl Metric for LossMetric {
             let volatility = sample.engine.score::<VolatilityScore>();
             let final_score = sample.engine.score::<FinalScore>();
 
-            let pred_decision = match final_score.decision.trim().to_ascii_uppercase().as_str() {
-                "LONG" => Decision::Long,
-                "SHORT" => Decision::Short,
-                _ => Decision::Neutral,
-            };
-
             let d_loss =
                 Self::weighted_signed_loss(trend.direction, target.direction, trend.confidence);
 
@@ -187,7 +181,8 @@ impl Metric for LossMetric {
                 volatility.confidence,
             );
 
-            let dec_loss = Self::decision_loss(pred_decision, target.decision, final_score.score);
+            let dec_loss =
+                Self::decision_loss(final_score.decision, target.decision, final_score.score);
 
             let c_loss = Self::unsigned_loss(final_score.confidence, target.confidence);
 
@@ -225,13 +220,6 @@ impl Metric for LossMetric {
             .with("loss_calibration", calibration_loss)
             .with("loss_total", total_loss)
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Decision {
-    Long,
-    Short,
-    Neutral,
 }
 
 struct TargetSample {

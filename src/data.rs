@@ -57,7 +57,7 @@ impl StockData {
 
         let request = apca::data::v2::bars::ListReqInit {
             limit: None,
-            adjustment: Some(apca::data::v2::bars::Adjustment::Raw),
+            adjustment: Some(apca::data::v2::bars::Adjustment::Split),
             feed: None,
             page_token: None,
             _non_exhaustive: (),

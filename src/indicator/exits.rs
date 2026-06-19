@@ -4,36 +4,27 @@ use crate::indicator::atr::AvgTrueRange;
 use std::any::Any;
 
 /// How many ATR units away to place the Stop-Loss.
-const LOSS_MULTI: f64 = 2.0;
+const LOSS_MULTI: f64 = 1.5;
 
 /// How many ATR units away to place the Take-Profit.
-const PROFIT_MULTI: f64 = 3.0;
+const PROFIT_MULTI: f64 = 2.0;
 
 /// # Dynamic Exits Indicator
 ///
-/// Computes Take-Profit and Stop-Loss price levels based on the Average True Range (ATR).
+/// Computes the absolute dollar *distance* for Take-Profit and Stop-Loss based on the ATR.
 pub struct DynamicExits {
-    /// Stop loss price levels for LONG positions.
-    pub stop_loss_long: Vec<f64>,
+    /// The absolute dollar distance for the Stop Loss.
+    pub sl_distance: Vec<f64>,
 
-    /// Take profit price levels for LONG positions.
-    pub take_profit_long: Vec<f64>,
-
-    /// Stop loss price levels for SHORT positions.
-    pub stop_loss_short: Vec<f64>,
-
-    /// Take profit price levels for SHORT positions.
-    pub take_profit_short: Vec<f64>,
+    /// The absolute dollar distance for the Take Profit.
+    pub tp_distance: Vec<f64>,
 }
 
 impl DynamicExits {
-    /// Creates a new [DynamicExits] indicator.
     pub fn new() -> Self {
         Self {
-            stop_loss_long: Vec::new(),
-            take_profit_long: Vec::new(),
-            stop_loss_short: Vec::new(),
-            take_profit_short: Vec::new(),
+            sl_distance: Vec::new(),
+            tp_distance: Vec::new(),
         }
     }
 }
@@ -50,31 +41,27 @@ impl Indicator for DynamicExits {
 
         let atr = ctx.indicator::<AvgTrueRange<14>>();
 
-        self.stop_loss_long = vec![0.0; len];
-        self.take_profit_long = vec![0.0; len];
-        self.stop_loss_short = vec![0.0; len];
-        self.take_profit_short = vec![0.0; len];
+        self.sl_distance.clear();
+        self.tp_distance.clear();
+        self.sl_distance.reserve(len);
+        self.tp_distance.reserve(len);
 
-        for (i, (&close, &current_atr)) in closes.iter().zip(&atr.atr).enumerate() {
+        for (i, &close) in closes.iter().enumerate() {
+            let current_atr = atr.atr.get(i).copied().unwrap_or(f64::NAN);
+
             let atr_val = if current_atr.is_finite() && current_atr > 0.0 {
                 current_atr
             } else {
                 close * 0.02
             };
 
-            let sl_distance = atr_val * LOSS_MULTI;
-            let tp_distance = atr_val * PROFIT_MULTI;
-
-            self.stop_loss_long[i] = close - sl_distance;
-            self.take_profit_long[i] = close + tp_distance;
-
-            self.stop_loss_short[i] = close + sl_distance;
-            self.take_profit_short[i] = close - tp_distance;
+            self.sl_distance.push(atr_val * LOSS_MULTI);
+            self.tp_distance.push(atr_val * PROFIT_MULTI);
         }
     }
 
     fn is_computed(&self) -> bool {
-        !self.stop_loss_long.is_empty()
+        !self.sl_distance.is_empty()
     }
 
     fn as_any(&self) -> &dyn Any {

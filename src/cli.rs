@@ -1,7 +1,7 @@
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataCache, DataKey, StockData};
 use crate::math;
-use crate::score::final_score::FinalScore;
+use crate::score::final_score::{Decision, FinalScore};
 use crate::{engine, eval, utils};
 use clap::Parser;
 use std::sync::Arc;
@@ -49,22 +49,28 @@ impl Cli {
         tracing::info!("Decision: {}", score.decision);
         tracing::info!("Predicted Target Date: {}", target_end_str);
 
-        if score.decision.as_str() == "LONG" {
-            let sl = exits.stop_loss_long[last_idx];
-            let tp = exits.take_profit_long[last_idx];
+        if score.decision == Decision::Long {
+            let sl_dist = exits.sl_distance[last_idx];
+            let tp_dist = exits.tp_distance[last_idx];
 
-            let sl_pct = (entry_price - sl) / entry_price * 100.0;
-            let tp_pct = (tp - entry_price) / entry_price * 100.0;
+            let sl = entry_price - sl_dist;
+            let tp = entry_price + tp_dist;
+
+            let sl_pct = (sl_dist / entry_price) * 100.0;
+            let tp_pct = (tp_dist / entry_price) * 100.0;
 
             tracing::info!("Entry: ${:.2}", entry_price);
             tracing::info!("Stop Loss: ${:.2} (-{:.2}%)", sl, sl_pct);
             tracing::info!("Take Profit: ${:.2} (+{:.2}%)", tp, tp_pct);
-        } else if score.decision.as_str() == "SHORT" {
-            let sl = exits.stop_loss_short[last_idx];
-            let tp = exits.take_profit_short[last_idx];
+        } else if score.decision == Decision::Short {
+            let sl_dist = exits.sl_distance[last_idx];
+            let tp_dist = exits.tp_distance[last_idx];
 
-            let sl_pct = (sl - entry_price) / entry_price * 100.0;
-            let tp_pct = (entry_price - tp) / entry_price * 100.0;
+            let sl = entry_price + sl_dist;
+            let tp = entry_price - tp_dist;
+
+            let sl_pct = (sl_dist / entry_price) * 100.0;
+            let tp_pct = (tp_dist / entry_price) * 100.0;
 
             tracing::info!("Entry: ${:.2}", entry_price);
             tracing::info!("Stop Loss: ${:.2} (+{:.2}%)", sl, sl_pct);
@@ -210,10 +216,11 @@ pub struct EvalArgs {
     /// Should the evaluator include statistics for every registered score.
     #[arg(long = "stats", short = 's')]
     pub stats: bool,
+    /// The sample count to use.
+    #[arg(long = "samples", short = 'c', default_value_t = 250)]
+    pub samples: usize,
     /// The end date to use.
     pub end: String,
-    /// The sample count to use.
-    pub samples: usize,
     /// The ticker to use.
     pub tickers: Vec<String>,
 }

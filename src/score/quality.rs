@@ -1,6 +1,6 @@
 use crate::engine::Context;
 use crate::indicator::er::EfficiencyRatio;
-use crate::math;
+use crate::indicator::regime::MarketRegime;
 use crate::score::Score;
 use std::any::Any;
 
@@ -8,7 +8,9 @@ use std::any::Any;
 ///
 /// Measures how clean, stable, and structurally aligned the market is.
 ///
-/// Requires no indicators.
+/// Requires:
+/// - `MarketRegime`
+/// - `EfficiencyRatio<10, 3>`
 pub struct QualityScore {
     /// Final computed market quality score.
     ///
@@ -48,14 +50,48 @@ impl Score for QualityScore {
     }
 
     fn compute(&mut self, ctx: Context) {
-        let regime = ctx.regime();
-        let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
-        let er_value = math::last_finite(&er.smooth).unwrap_or(0.0).clamp(0.0, 1.0);
+        let data = ctx.data();
+        let len = data.closes.len();
+        if len == 0 {
+            self.computed = true;
+            return;
+        }
+        let last_idx = len - 1;
 
-        let trend = regime.trend.clamp(-1.0, 1.0);
-        let structure = regime.structure.clamp(-1.0, 1.0);
-        let participation = regime.participation.clamp(0.0, 1.0);
-        let volatility = regime.volatility.clamp(0.0, 1.0);
+        let regime = ctx.indicator::<MarketRegime>();
+        let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
+
+        let trend = regime
+            .trend
+            .get(last_idx)
+            .copied()
+            .unwrap_or(0.0)
+            .clamp(-1.0, 1.0);
+        let structure = regime
+            .structure
+            .get(last_idx)
+            .copied()
+            .unwrap_or(0.0)
+            .clamp(-1.0, 1.0);
+        let participation = regime
+            .participation
+            .get(last_idx)
+            .copied()
+            .unwrap_or(0.5)
+            .clamp(0.0, 1.0);
+        let volatility = regime
+            .volatility
+            .get(last_idx)
+            .copied()
+            .unwrap_or(0.5)
+            .clamp(0.0, 1.0);
+
+        let er_value = er
+            .smooth
+            .get(last_idx)
+            .copied()
+            .unwrap_or(0.0)
+            .clamp(0.0, 1.0);
 
         let vol_distance = (volatility - 0.5).abs();
         let vol_quality = (1.0 - vol_distance * 2.0).clamp(0.0, 1.0);

@@ -5,11 +5,12 @@ use crate::indicator::boll::BollingerBands;
 use crate::indicator::ema::ExpMovAvg;
 use crate::indicator::er::EfficiencyRatio;
 use crate::indicator::exits::DynamicExits;
+use crate::indicator::regime::MarketRegime;
 use crate::indicator::roc::RateOfChange;
 use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::rvol::RelativeVolume;
 use crate::indicator::swing::SwingStructure;
-use crate::regime::Regime;
+use crate::indicator::veto::MacroVeto;
 use crate::score::Score;
 use crate::score::final_score::FinalScore;
 use crate::score::participation::ParticipationScore;
@@ -35,6 +36,8 @@ pub fn build() -> Engine {
     engine.add_indicator(RelativeVolume::<20>::new());
     engine.add_indicator(RelStrengthIdx::<14>::new());
     engine.add_indicator(DynamicExits::new());
+    engine.add_indicator(MacroVeto::new());
+    engine.add_indicator(MarketRegime::new());
 
     engine.add_score(TrendScore::new());
     engine.add_score(StrengthScore::new());
@@ -48,8 +51,6 @@ pub fn build() -> Engine {
 
 /// The engine behind the algorithm
 pub struct Engine {
-    regime: Option<Regime>,
-
     indicators: FastMap<String, Box<dyn Indicator>>,
     run_indicators: Vec<String>,
 
@@ -63,7 +64,6 @@ impl Engine {
     /// See [build] for a more convenient way to create an engine.
     pub fn new() -> Self {
         Self {
-            regime: None,
             indicators: FastMap::with_capacity_and_hasher(16, Default::default()),
             run_indicators: Vec::with_capacity(16),
 
@@ -175,12 +175,6 @@ impl Engine {
         }
 
         if traces {
-            tracing::info!("Computing market regime...");
-        }
-
-        self.regime = Some(Regime::compute(self.context(data)));
-
-        if traces {
             tracing::info!("Building {} scores...", self.scores.len());
         }
 
@@ -212,11 +206,6 @@ impl<'a> Context<'a> {
     /// Returns the [StockData] associated with the context.
     pub fn data(&self) -> &'a StockData {
         self.data
-    }
-
-    /// Returns the market regime.
-    pub fn regime(&self) -> Regime {
-        self.engine.regime.clone().expect("Regime not computed")
     }
 
     /// Returns the indicator with the given type.

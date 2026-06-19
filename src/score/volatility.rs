@@ -1,6 +1,7 @@
 use crate::engine::Context;
 use crate::indicator::atr::AvgTrueRange;
 use crate::indicator::boll::BollingerBands;
+use crate::indicator::regime::MarketRegime;
 use crate::score::Score;
 use std::any::Any;
 
@@ -9,6 +10,7 @@ use std::any::Any;
 /// A score representing the market volatility of a stock.
 ///
 /// Requires:
+/// - `MarketRegime`
 /// - `AvgTrueRange<14>`
 /// - `BollingerBands<20, 2>`
 pub struct VolatilityScore {
@@ -41,39 +43,49 @@ impl VolatilityScore {
         }
     }
 
-    /// Converts the latest value of a positive series into a normalized
-    /// 0..1 score relative to its own historical distribution.
-    ///
-    /// - around the historical mean -> ~0.5
-    /// - above the mean -> toward 1.0
-    /// - below the mean -> toward 0.0
     #[inline]
-    fn relative_component(values: &[f64]) -> f64 {
-        let finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
-
-        if finite.len() < 2 {
+    fn relative_component(values: &[f64], lookback: usize) -> f64 {
+        let len = values.len();
+        if len == 0 {
             return 0.5;
         }
 
-        let mean = finite.iter().sum::<f64>() / finite.len() as f64;
-        let var = finite
-            .iter()
-            .map(|v| {
-                let d = *v - mean;
-                d * d
-            })
-            .sum::<f64>()
-            / finite.len() as f64;
+        let start = len.saturating_sub(lookback);
+        let window = &values[start..];
 
-        let std = var.sqrt();
+        let mut count = 0;
+        let mut sum = 0.0;
+        let mut last_valid = f64::NAN;
+
+        for &v in window {
+            if v.is_finite() {
+                sum += v;
+                count += 1;
+                last_valid = v;
+            }
+        }
+
+        if count < 2 || !last_valid.is_finite() {
+            return 0.5;
+        }
+
+        let mean = sum / count as f64;
+
+        let mut var_sum = 0.0;
+        for &v in window {
+            if v.is_finite() {
+                let d = v - mean;
+                var_sum += d * d;
+            }
+        }
+
+        let std = (var_sum / count as f64).sqrt();
         if std <= 1e-12 {
             return 0.5;
         }
 
-        let last = *finite.last().unwrap();
-        let z = (last - mean) / std;
+        let z = (last_valid - mean) / std;
 
-        // Keep it smooth and centered.
         (0.5 + 0.5 * (z / 2.0).tanh()).clamp(0.0, 1.0)
     }
 }
@@ -84,13 +96,14 @@ impl Score for VolatilityScore {
     }
 
     fn compute(&mut self, ctx: Context) {
-        let regime_vol = ctx.regime().volatility.clamp(0.0, 1.0);
+        let regime = ctx.indicator::<MarketRegime>();
+        let regime_vol = *regime.volatility.last().unwrap_or(&0.5);
 
         let atr = ctx.indicator::<AvgTrueRange<14>>();
         let bb = ctx.indicator::<BollingerBands<20, 2>>();
 
-        let atr_component = Self::relative_component(&atr.norm_atr);
-        let bb_component = Self::relative_component(&bb.width);
+        let atr_component = Self::relative_component(&atr.norm_atr, 100);
+        let bb_component = Self::relative_component(&bb.width, 100);
 
         let volatility =
             (atr_component * 0.40 + bb_component * 0.35 + regime_vol * 0.25).clamp(0.0, 1.0);

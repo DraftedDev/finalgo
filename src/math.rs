@@ -36,36 +36,6 @@ pub fn std_dev(values: &[f64], mean: f64) -> f64 {
     variance.sqrt()
 }
 
-/// Returns the last finite value in a slice or [None] if no finite value is found.
-#[inline]
-pub fn last_finite(values: &[f64]) -> Option<f64> {
-    values.iter().rev().copied().find(|v| v.is_finite())
-}
-
-/// Returns the mean of the last `n` finite values in a slice or [None] if no finite values are found.
-#[inline]
-pub fn last_finite_mean(values: &[f64], n: usize) -> Option<f64> {
-    let mut sum = 0.0;
-    let mut count = 0usize;
-
-    for &v in values.iter().rev() {
-        if v.is_finite() {
-            sum += v;
-            count += 1;
-        }
-
-        if count == n {
-            break;
-        }
-    }
-
-    if count == 0 {
-        None
-    } else {
-        Some(sum / count as f64)
-    }
-}
-
 /// Returns the last non-zero value in a slice or [None] if no non-zero value is found.
 #[inline]
 pub fn last_non_zero(values: &[f64]) -> Option<f64> {

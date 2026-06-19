@@ -32,6 +32,12 @@ pub mod swing;
 /// Contains the [exits::DynamicExits] indicator.
 pub mod exits;
 
+/// Contains the [veto::MacroVeto] indicator.
+pub mod veto;
+
+/// Contains the [regime::MarketRegime] indicator.
+pub mod regime;
+
 /// A market indicator that may depend on OHLCV data or other indicators.
 pub trait Indicator: 'static {
     /// The name of the indicator.

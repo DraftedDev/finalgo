@@ -17,8 +17,7 @@ It's written in Rust and uses the Alpaca Finance API for fetching market data fo
 ## Features
 
 - Free Data fetching from the Alpaca Finance API.
-- Fetched market data in parallel for maximum performance.
-- Stores fetched data in a database for quick access.
+- Bulk-fetches data to not hit the API limits.
 - Complete Engine + Indicators + Scores + Metrics architecture.
 - Open-Source and licensed under the [MIT-License](./LICENSE).
 
@@ -47,23 +46,3 @@ Evaluating is done using the `eval` command:
 ```bash
 eval <end-date> <samples> <ticker1> <ticker2> <ticker3> <...>
 ```
-
-For examples and recommended eval commands, see this:
-
-#### Quick Evaluation
-
-For development and fast evaluation.
-
-```bash
-eval 01.06.2026 250 SPY QQQ NVDA TSLA
-```
-
-#### Full Evaluation
-
-For production and full evaluation.
-
-```bash
-eval 01.06.2026 2000 SPY IWM NVDA TSLA TLT GLD
-```
-
-You can optionally add the `-s` flag to print extra statistics about all the scores.
