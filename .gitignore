@@ -1,3 +1,5 @@
 /target
 /.idea
-/secrets
+/secrets/ALPACA_KEY
+/secrets/ALPACA_SECRET
+

@@ -25,24 +25,64 @@ It's written in Rust and uses the Alpaca Finance API for fetching market data fo
 
 The project itself is a binary and contains a CLI with different commands.
 
-### Running
+Since FinalGo uses the Alpaca Finance API, an account and API key are required.
 
-You can run the algorithm with the `run` command:
+Store the API key in `secrets/ALPACA_KEY` and the API secret in `secrets/ALPACA_SECRET`.
 
-```bash
-run <end-date> <ticker>
+Git ignores these files, so you can commit changes without needing to worry about them.
+
+### Command-Line-Interface
+
+```
+Command-line-interface to the finalgo algorithm
+
+Usage: finalgo <COMMAND>
+
+Commands:
+  run   Run the interface
+  eval  Evaluate the algorithm with test data
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help
 ```
 
-For example:
+#### `finalyst run`
 
-```bash
-run 01.06.2026 SPY
+Runs the interface on the given target date and ticker.
+
+The stock symbol must have data from `TARGET - CANDLE_LOOK_BACK (610 candles)` to `TARGET`.
+
+Predicted output is valid for `TARGET + HORIZON (5 trading days)`.
+
+```
+Usage: finalgo run <TARGET> <TICKER>
+
+Arguments:
+  <TARGET>  The target date to predict for
+  <TICKER>  The ticker to use
 ```
 
-### Evaluating
+#### `finalyst eval`
 
-Evaluating is done using the `eval` command:
+Evaluates the algorithm on given tickers and outputs results of various metrics.
 
-```bash
-eval <end-date> <samples> <ticker1> <ticker2> <ticker3> <...>
+The stock symbols must have data from `TARGET - CANDLE_LOOK_BACK (610 candles) * samples` to `TARGET`.
+
 ```
+Usage: finalgo eval [OPTIONS] <END> [TICKERS]...
+
+Arguments:
+  <END>         The end date to use
+  [TICKERS]...  The ticker to use
+
+Options:
+  -s, --stats              Should the evaluator include statistics for every registered score
+  -c, --samples <SAMPLES>  The sample count to use [default: 250]
+```
+
+## Real-World Usage
+
+I recommend to first paper-trade with this algorithm.
+
+If you want to actually use it in the real world, checkout the [Trading Guide](./TRADING.md).
