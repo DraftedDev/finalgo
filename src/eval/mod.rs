@@ -121,7 +121,7 @@ impl Evaluator {
                     alpha_score,
                     profit_factor,
                     trades_taken: (trades_taken / total_trades) * 100.0,
-                    win_rate,
+                    win_rate: win_rate * 100.0,
                 }
             })
             .collect::<Vec<_>>();
