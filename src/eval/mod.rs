@@ -5,7 +5,8 @@ use crate::eval::precision::PrecisionMetric;
 use crate::eval::profit::ProfitLossMetric;
 use crate::eval::stats::StatsMetric;
 use crate::utils::{FastMap, ValueMap};
-use crate::{engine, utils};
+use crate::{engine, math, utils};
+use std::fmt::{Display, Formatter};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Contains the loss metric.
@@ -67,7 +68,7 @@ impl Evaluator {
     }
 
     /// Evaluates the engine algorithm on the given samples.
-    pub fn eval(&mut self, samples: Vec<(StockData, StockData)>) -> ValueMap {
+    pub fn eval(&self, samples: Vec<(StockData, StockData)>) -> ValueMap {
         let inputs = utils::with_progress("Computing", samples.len() as u64, |span| {
             let mut results = Vec::with_capacity(samples.len());
 
@@ -96,5 +97,82 @@ impl Evaluator {
 
             result
         })
+    }
+
+    /// Ranks the tickers based on the computed metrics.
+    ///
+    /// Returns a sorted vector of [EvalRank] instances.
+    pub fn rank(&self, samples: Vec<(String, Vec<(StockData, StockData)>)>) -> Vec<EvalRank> {
+        let mut results = samples
+            .into_iter()
+            .map(|(ticker, data)| {
+                let total_trades = data.len() as f64;
+
+                let eval = self.eval(data);
+
+                let alpha_score = eval.get("pnl_alpha_score").as_float().unwrap();
+                let trades_taken = eval.get("pnl_trades_taken").as_int().unwrap() as f64;
+                let profit_factor = eval.get("pnl_profit_factor").as_float().unwrap();
+                let win_rate = eval.get("pnl_win_rate").as_percent().unwrap();
+
+                EvalRank {
+                    rank: 0,
+                    ticker,
+                    alpha_score,
+                    profit_factor,
+                    trades_taken: (trades_taken / total_trades) * 100.0,
+                    win_rate,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        results.sort_by(|a, b| b.alpha_score.partial_cmp(&a.alpha_score).unwrap());
+
+        for (i, r) in results.iter_mut().enumerate() {
+            r.rank = i + 1;
+        }
+
+        results
+    }
+}
+
+/// The evaluation rank of a ticker run.
+#[derive(Debug, Clone)]
+pub struct EvalRank {
+    /// The rank of the ticker in the ranking list.
+    pub rank: usize,
+    /// The ticker symbol.
+    pub ticker: String,
+    /// The alpha score computed by the [ProfitLossMetric].
+    pub alpha_score: f64,
+    /// The profit factor computed by the [ProfitLossMetric].
+    pub profit_factor: f64,
+    /// The trades taken computed by the [ProfitLossMetric].
+    pub trades_taken: f64,
+    /// The win rate computed by the [ProfitLossMetric].
+    pub win_rate: f64,
+}
+
+impl Display for EvalRank {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "   {}: '{}'", self.rank, self.ticker)?;
+        writeln!(
+            f,
+            "      Alpha Score: {}",
+            math::round_to(self.alpha_score, 2)
+        )?;
+        writeln!(
+            f,
+            "      Profit Factor: {}",
+            math::round_to(self.profit_factor, 2)
+        )?;
+        writeln!(
+            f,
+            "      Trades Taken: {}%",
+            math::round_to(self.trades_taken, 2)
+        )?;
+        writeln!(f, "      Win Rate: {}%", math::round_to(self.win_rate, 2))?;
+
+        Ok(())
     }
 }

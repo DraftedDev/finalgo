@@ -17,21 +17,8 @@ pub struct StockData {
 }
 
 impl StockData {
-    /// Fetches the stock data.
-    ///
-    /// If not in the cache, the data will be fetched from the Alpaca Finance API.
-    pub async fn fetch(cache: &DataCache, client: &Client, key: DataKey) -> Self {
-        if let Some(data) = cache.get_stock_data(&key) {
-            data
-        } else {
-            tracing::warn!("StockData not found in cache. Fetching from Alpaca...");
-
-            Self::fetch_alpaca(client, &key).await
-        }
-    }
-
     /// Fetches the stock data from the Alpaca Finance API.
-    pub async fn fetch_alpaca(client: &Client, key: &DataKey) -> Self {
+    pub async fn fetch(client: &Client, key: &DataKey) -> Self {
         let end_date = utils::parse_naive_date(&key.end);
         let start_date = utils::subtract_naive_date(end_date, key.size);
         let api_end_date = utils::add_naive_date(end_date, 1);

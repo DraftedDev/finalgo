@@ -78,39 +78,6 @@ pub fn with_progress<R>(msg: &str, len: u64, f: impl FnOnce(tracing::Span) -> R)
     result
 }
 
-/// Runs an asynchronous function with a progress bar in order to display progress to the end user.
-///
-/// The bar can be progressed by calling [tracing::Span::pb_inc] or similar methods.
-pub async fn with_progress_async<Fut: Future<Output = R>, R>(
-    msg: &str,
-    len: u64,
-    f: impl FnOnce(tracing::Span) -> Fut,
-) -> R {
-    let span = tracing::span!(tracing::Level::INFO, "progress");
-    span.pb_set_message(msg);
-    span.pb_set_length(len);
-
-    let template = if len == 0 {
-        "  [{spinner:.green}] {msg} │ {elapsed:<4}"
-    } else {
-        "  [{spinner:.green}] {msg} {wide_bar:.green/red} {pos}/{len} ({percent}%) │ {elapsed:<4}"
-    };
-
-    span.pb_set_style(
-        &ProgressStyle::with_template(template)
-            .unwrap()
-            .progress_chars("━━━"),
-    );
-
-    let span2 = span.clone();
-    let enter = span2.enter();
-    let result = f(span).await;
-
-    drop(enter);
-
-    result
-}
-
 pub fn client() -> Client {
     Client::new(
         ApiInfo::from_parts(
@@ -195,6 +162,14 @@ impl ValueMap {
             self.add(key, value);
         }
     }
+
+    pub fn get(&self, key: impl AsRef<str>) -> &Value {
+        let key = key.as_ref();
+
+        self.fields
+            .get(key)
+            .unwrap_or_else(|| panic!("Field {key} not found"))
+    }
 }
 
 impl Display for ValueMap {
@@ -234,6 +209,32 @@ pub enum Value {
 
     /// A string value.
     String(String),
+}
+
+impl Value {
+    /// Returns the value as `f64` or [None] if the value is not a float.
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Value::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    /// Returns the value as `f64` or [None] if the value is not a percentage.
+    pub fn as_percent(&self) -> Option<f64> {
+        match self {
+            Value::Percent(p) => Some(*p),
+            _ => None,
+        }
+    }
+
+    /// Returns the value as `i64` or [None] if the value is not an integer.
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Value::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Value {

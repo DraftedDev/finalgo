@@ -1,7 +1,5 @@
 [profile.dev]
-lto = "thin"
 debug = 1
-codegen-units = 16
 overflow-checks = true
 incremental = true
 rustflags = ["-Ctarget-cpu=native", "-Zshare-generics=y", "-Zthreads=0"]

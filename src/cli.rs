@@ -2,10 +2,10 @@ use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataCache, DataKey, StockData};
 use crate::math;
 use crate::score::final_score::{Decision, FinalScore};
+use crate::utils::FastMap;
 use crate::{engine, eval, utils};
 use clap::Parser;
 use std::sync::Arc;
-use tokio::task::JoinSet;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Command-line-interface to the finalgo algorithm.
@@ -23,7 +23,7 @@ impl Cli {
             utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
         let target_end_str = utils::format_naive_date(target_end_date);
 
-        let data = StockData::fetch_alpaca(
+        let data = StockData::fetch(
             &utils::client(),
             &DataKey {
                 end: args.target.clone(),
@@ -113,7 +113,6 @@ impl Cli {
         let absolute_end = last_target_end;
 
         let mut cache = DataCache::new();
-
         let client = Arc::new(utils::client());
 
         tracing::info!("Pre-fetching data into cache...");
@@ -130,65 +129,74 @@ impl Cli {
 
         let cache = Arc::new(cache);
 
-        let fetched =
-            utils::with_progress_async("Fetching", data.len() as u64, |span| async move {
-                let mut fetched = Vec::with_capacity(data.len());
+        let mut grouped_data: FastMap<String, Vec<(StockData, StockData)>> = FastMap::default();
 
-                for chunk in data.chunks(FETCH_CHUNK_SIZE) {
-                    let mut set = JoinSet::new();
+        for ticker in &args.tickers {
+            grouped_data.insert(ticker.clone(), Vec::with_capacity(args.samples));
+        }
 
-                    for (t, t_target, ticker) in chunk.iter().cloned() {
-                        let client = client.clone();
-                        let cache = cache.clone();
-                        let span = span.clone();
+        let tickers = args.tickers.clone();
 
-                        set.spawn(async move {
-                            let predict = StockData::fetch(
-                                &cache,
-                                &client,
-                                DataKey {
-                                    end: utils::format_naive_date(t),
-                                    size: CANDLE_LOOK_BACK,
-                                    ticker: ticker.clone(),
-                                },
-                            )
-                            .await;
+        let fetched = utils::with_progress("Collecting", data.len() as u64, |span| {
+            for chunk in data.chunks(FETCH_CHUNK_SIZE) {
+                for (t, t_target, ticker) in chunk.iter().cloned() {
+                    let predict = cache
+                        .get_stock_data(&DataKey {
+                            end: utils::format_naive_date(t),
+                            size: CANDLE_LOOK_BACK,
+                            ticker: ticker.clone(),
+                        })
+                        .expect("Invalid cache state");
 
-                            let target = StockData::fetch(
-                                &cache,
-                                &client,
-                                DataKey {
-                                    end: utils::format_naive_date(t_target),
-                                    size: TARGET_HORIZON,
-                                    ticker: ticker.clone(),
-                                },
-                            )
-                            .await;
+                    let target = cache
+                        .get_stock_data(&DataKey {
+                            end: utils::format_naive_date(t_target),
+                            size: TARGET_HORIZON,
+                            ticker: ticker.clone(),
+                        })
+                        .expect("Invalid cache state");
 
-                            assert!(
-                                !target.opens.is_empty(),
-                                "Target dataset must contain at least 1 candle"
-                            );
+                    assert!(
+                        !target.opens.is_empty(),
+                        "Target dataset must contain at least 1 candle"
+                    );
 
-                            span.pb_inc(1);
-                            (predict, target)
-                        });
-                    }
+                    span.pb_inc(1);
 
-                    while let Some(res) = set.join_next().await {
-                        let (predict, target) = res.expect("Fetch task failed");
-                        fetched.push((predict, target));
-                    }
+                    grouped_data
+                        .get_mut(&ticker)
+                        .unwrap()
+                        .push((predict, target));
                 }
+            }
 
-                fetched
-            })
-            .await;
+            tickers
+                .iter()
+                .map(|t| (t.clone(), grouped_data.remove(t).unwrap()))
+                .collect::<Vec<(String, Vec<(StockData, StockData)>)>>()
+        });
 
-        let mut eval = eval::build(args.stats);
-        let result = eval.eval(fetched);
+        let eval = eval::build(args.stats);
 
-        tracing::info!("[######################### EVAL #########################]\n{result}");
+        if args.rank {
+            let result = eval
+                .rank(fetched)
+                .into_iter()
+                .map(|r| r.to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            tracing::info!("[######################### RANK #########################]\n{result}");
+        } else {
+            let data = fetched
+                .into_iter()
+                .flat_map(|(_, data)| data)
+                .collect::<Vec<_>>();
+
+            let result = eval.eval(data);
+
+            tracing::info!("[######################### EVAL #########################]\n{result}");
+        }
     }
 }
 
@@ -219,6 +227,9 @@ pub struct EvalArgs {
     /// The sample count to use.
     #[arg(long = "samples", short = 'c', default_value_t = 250)]
     pub samples: usize,
+    /// Should the evaluator rank the tickers.
+    #[arg(long = "rank", short = 'r')]
+    pub rank: bool,
     /// The end date to use.
     pub end: String,
     /// The ticker to use.
