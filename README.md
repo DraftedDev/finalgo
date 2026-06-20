@@ -47,6 +47,8 @@ Options:
   -h, --help  Print help
 ```
 
+---
+
 #### `finalyst run`
 
 Runs the interface on the given target date and ticker.
@@ -56,12 +58,16 @@ The stock symbol must have data from `TARGET - CANDLE_LOOK_BACK (610 candles)` t
 Predicted output is valid for `TARGET + HORIZON (5 trading days)`.
 
 ```
+Run the interface
+
 Usage: finalgo run <TARGET> <TICKER>
 
 Arguments:
   <TARGET>  The target date to predict for
   <TICKER>  The ticker to use
 ```
+
+---
 
 #### `finalyst eval`
 
@@ -70,6 +76,8 @@ Evaluates the algorithm on given tickers and outputs results of various metrics.
 The stock symbols must have data from `TARGET - CANDLE_LOOK_BACK (610 candles) * samples` to `TARGET`.
 
 ```
+Evaluate the algorithm with test data
+
 Usage: finalgo eval [OPTIONS] <END> [TICKERS]...
 
 Arguments:
@@ -79,6 +87,7 @@ Arguments:
 Options:
   -s, --stats              Should the evaluator include statistics for every registered score
   -c, --samples <SAMPLES>  The sample count to use [default: 250]
+  -r, --rank               Should the evaluator rank the tickers
 ```
 
 ## Real-World Usage
