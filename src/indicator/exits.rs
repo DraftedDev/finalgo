@@ -1,17 +1,20 @@
 use crate::engine::Context;
 use crate::indicator::Indicator;
 use crate::indicator::atr::AvgTrueRange;
+use crate::indicator::er::EfficiencyRatio;
+use crate::indicator::regime::MarketRegime;
 use std::any::Any;
 
-/// How many ATR units away to place the Stop-Loss.
-const LOSS_MULTI: f64 = 2.5;
+/// Base multiplier for Stop Loss.
+const BASE_SL_MULTI: f64 = 1.5;
 
-/// How many ATR units away to place the Take-Profit.
-const PROFIT_MULTI: f64 = 4.5;
+/// Base multiplier for Take Profit.
+const BASE_TP_MULTI: f64 = 2.0;
 
-/// # Dynamic Exits Indicator
+/// # Dynamic Exits Indicator (Regime-Adaptive)
 ///
-/// Computes the absolute dollar *distance* for Take-Profit and Stop-Loss based on the ATR.
+/// Computes the absolute dollar *distance* for Take-Profit and Stop-Loss based on the ATR,
+/// dynamically scaled by the current Market Regime (Volatility, Trend, and Efficiency).
 pub struct DynamicExits {
     /// The absolute dollar distance for the Stop Loss.
     pub sl_distance: Vec<f64>,
@@ -40,13 +43,16 @@ impl Indicator for DynamicExits {
         let len = closes.len();
 
         let atr = ctx.indicator::<AvgTrueRange<14>>();
+        let regime = ctx.indicator::<MarketRegime>();
+        let er = ctx.indicator::<EfficiencyRatio<10, 3>>();
 
         self.sl_distance.clear();
         self.tp_distance.clear();
         self.sl_distance.reserve(len);
         self.tp_distance.reserve(len);
 
-        for (i, &close) in closes.iter().enumerate() {
+        for i in 0..len {
+            let close = closes[i];
             let current_atr = atr.atr.get(i).copied().unwrap_or(f64::NAN);
 
             let atr_val = if current_atr.is_finite() && current_atr > 0.0 {
@@ -55,8 +61,22 @@ impl Indicator for DynamicExits {
                 close * 0.02
             };
 
-            self.sl_distance.push(atr_val * LOSS_MULTI);
-            self.tp_distance.push(atr_val * PROFIT_MULTI);
+            let vol = regime.volatility.get(i).copied().unwrap_or(0.5);
+            let trend = regime.trend.get(i).copied().unwrap_or(0.0).abs();
+            let efficiency = er.smooth.get(i).copied().unwrap_or(0.5);
+
+            let sl_multi = (BASE_SL_MULTI + (vol - 0.5) * 2.0).clamp(1.2, 3.5);
+
+            let vol_tp_adj = (vol - 0.5) * 1.5;
+
+            let trend_tp_adj = (trend - 0.3) * 2.5;
+
+            let eff_tp_adj = (efficiency - 0.5) * 1.5;
+
+            let tp_multi = (BASE_TP_MULTI + vol_tp_adj + trend_tp_adj + eff_tp_adj).clamp(1.5, 6.0);
+
+            self.sl_distance.push(atr_val * sl_multi);
+            self.tp_distance.push(atr_val * tp_multi);
         }
     }
 
