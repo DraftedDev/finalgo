@@ -1,5 +1,6 @@
 use crate::engine::Context;
 use crate::indicator::Indicator;
+use crate::math;
 use std::any::Any;
 
 /// # Efficiency Ratio Indicator
@@ -71,21 +72,6 @@ impl<const PERIOD: usize, const SMOOTH: usize> EfficiencyRatio<PERIOD, SMOOTH> {
             slope: Vec::new(),
         }
     }
-
-    #[inline]
-    fn mean(slice: &[f64]) -> f64 {
-        let mut sum = 0.0;
-        let mut n = 0;
-
-        for v in slice {
-            if v.is_finite() {
-                sum += *v;
-                n += 1;
-            }
-        }
-
-        if n == 0 { 0.0 } else { sum / n as f64 }
-    }
 }
 
 impl<const PERIOD: usize, const SMOOTH: usize> Indicator for EfficiencyRatio<PERIOD, SMOOTH> {
@@ -121,7 +107,7 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for EfficiencyRatio<PER
             let window = &self.er[i - SMOOTH..i];
 
             if window.iter().all(|v| v.is_finite()) {
-                self.smooth[i] = Self::mean(window).clamp(0.0, 1.0);
+                self.smooth[i] = math::mean(window).clamp(0.0, 1.0);
 
                 let prev = self.smooth[i - 1];
                 if prev.is_finite() {

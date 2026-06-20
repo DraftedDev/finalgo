@@ -45,42 +45,39 @@ impl<const PERIOD: usize> Indicator for RelativeVolume<PERIOD> {
         let volume = &ctx.data().volumes;
         let len = volume.len();
 
-        assert!(len >= PERIOD, "Must have at least {PERIOD} samples");
-
-        self.values = vec![f64::NAN; len];
+        self.values.reserve(len);
 
         let mut sum = 0.0;
+        let mut valid_count = 0;
 
-        // build initial window safely
         for i in 0..len {
             let v = volume[i];
+            let is_safe = Self::safe(v);
 
-            if !Self::safe(v) {
-                continue;
+            if i > PERIOD {
+                let old_idx = i - PERIOD - 1;
+                let old_v = volume[old_idx];
+                if Self::safe(old_v) {
+                    sum -= old_v;
+                    valid_count -= 1;
+                }
             }
 
-            // build rolling window
-            if i < PERIOD {
-                sum += v;
-                continue;
-            }
+            if i >= PERIOD && valid_count > 0 {
+                let avg = sum / valid_count as f64;
 
-            let avg = sum / PERIOD as f64;
-
-            if avg > 1e-12 {
-                let rvol = v / avg;
-
-                // soft clamp to reduce explosion noise
-                self.values[i] = rvol.min(5.0);
+                if is_safe && avg > 1e-12 {
+                    self.values.push((v / avg).min(5.0));
+                } else {
+                    self.values.push(if is_safe { 1.0 } else { f64::NAN });
+                }
             } else {
-                self.values[i] = 1.0;
+                self.values.push(f64::NAN);
             }
 
-            sum += v;
-
-            let old = volume[i - PERIOD];
-            if Self::safe(old) {
-                sum -= old;
+            if is_safe {
+                sum += v;
+                valid_count += 1;
             }
         }
     }

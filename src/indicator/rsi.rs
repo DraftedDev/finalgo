@@ -33,11 +33,11 @@ impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
 
     #[inline]
     fn compute_rsi(avg_gain: f64, avg_loss: f64) -> f64 {
-        if avg_loss == 0.0 {
+        if avg_loss <= 1e-12 {
             return 100.0;
         }
 
-        if avg_gain == 0.0 {
+        if avg_gain <= 1e-12 {
             return 0.0;
         }
 
@@ -47,7 +47,6 @@ impl<const PERIOD: usize> RelStrengthIdx<PERIOD> {
 
     #[inline]
     fn normalize(v: f64) -> f64 {
-        // convert 0..100 -> -1..1
         ((v - 50.0) / 50.0).clamp(-1.0, 1.0)
     }
 }
@@ -61,11 +60,11 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         let closes = &ctx.data().closes;
         let len = closes.len();
 
-        self.rsi = vec![f64::NAN; len];
-
-        if len <= PERIOD + 1 {
+        if len <= PERIOD {
             return;
         }
+
+        self.rsi.resize(len, f64::NAN);
 
         let mut gains = 0.0;
         let mut losses = 0.0;
@@ -75,7 +74,7 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
             if diff >= 0.0 {
                 gains += diff;
             } else {
-                losses += -diff;
+                losses -= diff;
             }
         }
 
@@ -85,13 +84,16 @@ impl<const PERIOD: usize> Indicator for RelStrengthIdx<PERIOD> {
         let mut rsi = Self::compute_rsi(avg_gain, avg_loss);
         self.rsi[PERIOD] = Self::normalize(rsi);
 
+        let period_f = PERIOD as f64;
+        let period_minus_1 = period_f - 1.0;
+
         for i in (PERIOD + 1)..len {
             let diff = closes[i] - closes[i - 1];
             let gain = diff.max(0.0);
             let loss = (-diff).max(0.0);
 
-            avg_gain = (avg_gain * (PERIOD as f64 - 1.0) + gain) / PERIOD as f64;
-            avg_loss = (avg_loss * (PERIOD as f64 - 1.0) + loss) / PERIOD as f64;
+            avg_gain = (avg_gain * period_minus_1 + gain) / period_f;
+            avg_loss = (avg_loss * period_minus_1 + loss) / period_f;
 
             rsi = Self::compute_rsi(avg_gain, avg_loss);
             self.rsi[i] = Self::normalize(rsi);

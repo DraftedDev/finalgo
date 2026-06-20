@@ -64,45 +64,62 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
 
         let len = closes.len();
 
+        assert!(PERIOD > 0, "Stochastic PERIOD must be > 0");
+        assert!(SMOOTH > 0, "Stochastic SMOOTH must be > 0");
         assert!(
-            len >= PERIOD + SMOOTH,
-            "Must have at least {PERIOD} + {SMOOTH} samples"
+            len >= PERIOD + SMOOTH - 1,
+            "Must have at least {} + {} - 1 samples",
+            PERIOD,
+            SMOOTH
         );
 
         self.k = vec![f64::NAN; len];
         self.d = vec![f64::NAN; len];
 
-        // %K calculation
-        for i in PERIOD..len {
-            let window_high = highs[i - PERIOD..i]
-                .iter()
-                .cloned()
-                .fold(f64::NEG_INFINITY, f64::max);
+        for (i, &close) in closes.iter().enumerate().skip(PERIOD - 1) {
+            let start = i + 1 - PERIOD;
 
-            let window_low = lows[i - PERIOD..i]
-                .iter()
-                .cloned()
-                .fold(f64::INFINITY, f64::min);
+            let mut window_high = f64::NEG_INFINITY;
+            let mut window_low = f64::INFINITY;
 
-            let range = Self::safe_range(window_high, window_low);
-            let close = closes[i];
+            for j in start..=i {
+                let h = highs[j];
+                let l = lows[j];
+
+                if h.is_finite() && h > window_high {
+                    window_high = h;
+                }
+
+                if l.is_finite() && l < window_low {
+                    window_low = l;
+                }
+            }
 
             if !close.is_finite() {
                 continue;
             }
 
+            let range = (window_high - window_low).max(1e-12);
             self.k[i] = ((close - window_low) / range).clamp(0.0, 1.0);
         }
 
-        // %D smoothing (SMA), using current %K value
-        for i in (PERIOD + SMOOTH - 1)..len {
-            let slice = &self.k[i + 1 - SMOOTH..i + 1];
+        for (i, d_val) in self.d.iter_mut().enumerate().skip(PERIOD + SMOOTH - 2) {
+            let start = i + 1 - SMOOTH;
+            let mut sum = 0.0;
+            let mut valid = true;
 
-            if slice.iter().any(|v| !v.is_finite()) {
-                continue;
+            for j in start..=i {
+                let val = self.k[j];
+                if !val.is_finite() {
+                    valid = false;
+                    break;
+                }
+                sum += val;
             }
 
-            self.d[i] = slice.iter().sum::<f64>() / SMOOTH as f64;
+            if valid {
+                *d_val = sum / SMOOTH as f64;
+            }
         }
     }
 

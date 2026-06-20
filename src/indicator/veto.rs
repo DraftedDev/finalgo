@@ -15,6 +15,7 @@ pub struct MacroVeto {
 }
 
 impl MacroVeto {
+    /// Create a new [MacroVeto] instance.
     pub fn new() -> Self {
         Self {
             veto_shorts: Vec::new(),
@@ -35,8 +36,8 @@ impl Indicator for MacroVeto {
         let ema = ctx.indicator::<ExpMovAvg<100>>();
         let atr = ctx.indicator::<AvgTrueRange<14>>();
 
-        self.veto_shorts = vec![false; len];
-        self.veto_longs = vec![false; len];
+        self.veto_shorts.reserve(len);
+        self.veto_longs.reserve(len);
 
         let mut prev_atr = 1.0;
 
@@ -52,6 +53,8 @@ impl Indicator for MacroVeto {
             prev_atr = current_atr;
 
             if !ema_slope.is_finite() {
+                self.veto_shorts.push(false);
+                self.veto_longs.push(false);
                 continue;
             }
 
@@ -60,8 +63,8 @@ impl Indicator for MacroVeto {
             let is_uptrend = norm_slope > 0.02;
             let is_downtrend = norm_slope < -0.02;
 
-            self.veto_shorts[i] = is_uptrend;
-            self.veto_longs[i] = is_downtrend;
+            self.veto_shorts.push(is_uptrend);
+            self.veto_longs.push(is_downtrend);
         }
     }
 

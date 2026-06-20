@@ -64,18 +64,34 @@ impl<const PERIOD: usize> Indicator for ExpMovAvg<PERIOD> {
         let closes = &ctx.data().closes;
         let len = closes.len();
 
-        assert!(len >= PERIOD, "Must have at least {PERIOD} samples");
-
         self.ema = Vec::with_capacity(len);
         self.distance = Vec::with_capacity(len);
         self.slope = Vec::with_capacity(len);
 
         let alpha = 2.0 / (PERIOD as f64 + 1.0);
 
-        let mut ema = closes[0];
+        let seed_len = PERIOD.min(len);
+        let mut sum = 0.0;
+
+        for (i, &close) in closes.iter().enumerate().take(seed_len) {
+            sum += close;
+            let sma = sum / (i + 1) as f64;
+
+            self.ema.push(sma);
+            self.distance.push(close - sma);
+            self.slope
+                .push(if i == 0 { 0.0 } else { sma - self.ema[i - 1] });
+        }
+
+        let mut ema = if seed_len > 0 {
+            sum / seed_len as f64
+        } else {
+            0.0
+        };
+
         let mut prev_ema = ema;
 
-        for &close in closes.iter() {
+        for &close in closes.iter().skip(seed_len) {
             ema = alpha * close + (1.0 - alpha) * ema;
 
             self.ema.push(ema);

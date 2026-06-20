@@ -6,7 +6,6 @@ use crate::indicator::regime::MarketRegime;
 use crate::indicator::roc::RateOfChange;
 use crate::indicator::rsi::RelStrengthIdx;
 use crate::indicator::swing::SwingStructure;
-use crate::math;
 use crate::score::Score;
 use std::any::Any;
 
@@ -72,14 +71,16 @@ impl Score for TrendScore {
             .clamp(0.0, 1.0);
         let current_atr = atr.atr.get(last_idx).copied().unwrap_or(1.0).max(1e-12);
         let ema_slope = ema.slope.get(last_idx).copied().unwrap_or(0.0);
-        let structure = swing.structure.get(last_idx).copied().unwrap_or(0.0);
-        let structure_strength = swing
+
+        let struct_val = swing.structure.get(last_idx).copied().unwrap_or(0.0);
+        let struct_str = swing
             .structure_strength
             .get(last_idx)
             .copied()
             .unwrap_or(0.0);
+
         let roc_value = roc.roc.get(last_idx).copied().unwrap_or(0.0);
-        let rsi_val = rsi.rsi.get(last_idx).copied().unwrap_or(0.0);
+        let rsi_val = rsi.rsi.get(last_idx).copied().unwrap_or(50.0);
         let er_value = er
             .smooth
             .get(last_idx)
@@ -87,26 +88,16 @@ impl Score for TrendScore {
             .unwrap_or(0.5)
             .clamp(0.0, 1.0);
 
-        let recent_bos = math::last_non_zero(&swing.bos)
-            .unwrap_or(0.0)
-            .clamp(-1.0, 1.0);
-        let recent_choch = math::last_non_zero(&swing.choch)
-            .unwrap_or(0.0)
-            .clamp(-1.0, 1.0);
+        let macro_trend = (ema_slope / current_atr * 5.0).tanh();
 
-        let macro_trend = (ema_slope / current_atr * 5.0).tanh().clamp(-1.0, 1.0);
+        let structure_dir = (struct_val * (0.5 + 0.5 * struct_str)).clamp(-1.0, 1.0);
 
-        let struct_trend = structure.clamp(-1.0, 1.0);
-        let struct_shift = (recent_bos * 0.7 + recent_choch * 0.3).clamp(-1.0, 1.0);
-        let structure_dir = (struct_trend * 0.60 + struct_shift * 0.40).clamp(-1.0, 1.0);
-
+        // Momentum
         let roc_dir = (roc_value * 20.0).tanh();
 
-        let exhaustion_signal = if rsi_val.abs() > 0.5 {
-            -rsi_val.signum() * (rsi_val.abs() - 0.5) * 2.0
-        } else {
-            0.0
-        };
+        let scale = if rsi_val > 1.0 { 50.0 } else { 0.5 };
+        let centered_rsi = ((rsi_val - scale) / scale).clamp(-1.0, 1.0);
+        let exhaustion_signal = -centered_rsi;
 
         let short_term_trigger = (roc_dir * 0.6 + exhaustion_signal * 0.4).clamp(-1.0, 1.0);
 
@@ -152,7 +143,7 @@ impl Score for TrendScore {
         };
 
         let core_energy = amplified_core.abs();
-        let market_clarity = er_value * 0.6 + structure_strength.clamp(0.0, 1.0) * 0.4;
+        let market_clarity = er_value * 0.6 + struct_str.clamp(0.0, 1.0) * 0.4;
 
         let vol_distance = (regime_vol - 0.5).abs();
         let vol_penalty = (1.0 - vol_distance * 1.5).clamp(0.0, 1.0);

@@ -7,22 +7,16 @@ use std::any::Any;
 /// Captures market structure via swing highs/lows, trend bias,
 /// and structural events (BOS / CHoCH) using a robust state machine.
 pub struct SwingStructure<const LEFT: usize, const RIGHT: usize> {
-    /// Confirmed swing highs. (Non-swing points are NaN)
     pub swing_highs: Vec<f64>,
-    /// Confirmed swing lows. (Non-swing points are NaN)
     pub swing_lows: Vec<f64>,
-    /// Structural bias signal (-1.0 to 1.0)
     pub structure: Vec<f64>,
-    /// Strength of structural trend (0.0 to 1.0)
     pub structure_strength: Vec<f64>,
-    /// Break of Structure (BOS) events (Sparse: mostly 0.0, spikes on breaks)
     pub bos: Vec<f64>,
-    /// Change of Character (CHoCH) events (Sparse: mostly 0.0, spikes on breaks)
     pub choch: Vec<f64>,
 }
 
 impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
-    /// Create a new empty [SwingStructure] instance.
+    /// Create a new [SwingStructure] instance.
     pub fn new() -> Self {
         assert!(LEFT > 0 && RIGHT > 0, "LEFT and RIGHT must be > 0");
 
@@ -37,11 +31,6 @@ impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
     }
 
     #[inline]
-    fn approx_eq(a: f64, b: f64) -> bool {
-        (a - b).abs() <= 1e-9
-    }
-
-    #[inline]
     fn is_unique_max(window: &[f64], candidate: f64, max_duplicates: usize) -> bool {
         if !candidate.is_finite() {
             return false;
@@ -53,10 +42,12 @@ impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
             if !v.is_finite() {
                 return false;
             }
-            if v > candidate {
+
+            if v > candidate + 1e-9 {
                 return false;
             }
-            if Self::approx_eq(v, candidate) {
+
+            if (v - candidate).abs() <= 1e-9 {
                 count += 1;
             }
         }
@@ -75,10 +66,12 @@ impl<const LEFT: usize, const RIGHT: usize> SwingStructure<LEFT, RIGHT> {
             if !v.is_finite() {
                 return false;
             }
-            if v < candidate {
+
+            if v < candidate - 1e-9 {
                 return false;
             }
-            if Self::approx_eq(v, candidate) {
+
+            if (v - candidate).abs() <= 1e-9 {
                 count += 1;
             }
         }
@@ -104,12 +97,12 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
             "Must have at least {LEFT} + {RIGHT} samples"
         );
 
-        self.swing_highs = vec![f64::NAN; len];
-        self.swing_lows = vec![f64::NAN; len];
-        self.structure = vec![0.0; len];
-        self.structure_strength = vec![0.0; len];
-        self.bos = vec![0.0; len];
-        self.choch = vec![0.0; len];
+        self.swing_highs.resize(len, f64::NAN);
+        self.swing_lows.resize(len, f64::NAN);
+        self.structure.resize(len, 0.0);
+        self.structure_strength.resize(len, 0.0);
+        self.bos.resize(len, 0.0);
+        self.choch.resize(len, 0.0);
 
         for i in LEFT..(len - RIGHT) {
             let high_window = &highs[i - LEFT..=i + RIGHT];
@@ -159,22 +152,22 @@ impl<const LEFT: usize, const RIGHT: usize> Indicator for SwingStructure<LEFT, R
                 let ll = l1 < l0;
 
                 let hh_mag = if h0.abs() > 1e-12 {
-                    ((h1 - h0) / h0.abs()).abs().min(0.1) * 10.0
+                    ((h1 - h0) / h0.abs()).min(0.1) * 10.0
                 } else {
                     0.0
                 };
                 let lh_mag = if h0.abs() > 1e-12 {
-                    ((h0 - h1) / h0.abs()).abs().min(0.1) * 10.0
+                    ((h0 - h1) / h0.abs()).min(0.1) * 10.0
                 } else {
                     0.0
                 };
                 let hl_mag = if l0.abs() > 1e-12 {
-                    ((l1 - l0) / l0.abs()).abs().min(0.1) * 10.0
+                    ((l1 - l0) / l0.abs()).min(0.1) * 10.0
                 } else {
                     0.0
                 };
                 let ll_mag = if l0.abs() > 1e-12 {
-                    ((l0 - l1) / l0.abs()).abs().min(0.1) * 10.0
+                    ((l0 - l1) / l0.abs()).min(0.1) * 10.0
                 } else {
                     0.0
                 };

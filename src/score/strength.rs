@@ -54,13 +54,13 @@ impl Score for StrengthScore {
     fn compute(&mut self, ctx: Context) {
         let data = ctx.data();
         let len = data.closes.len();
+
         if len == 0 {
             self.computed = true;
             return;
         }
         let last_idx = len - 1;
 
-        // 1. Fetch Indicators
         let roc = ctx.indicator::<RateOfChange<10>>();
         let atr = ctx.indicator::<AvgTrueRange<14>>();
         let swing = ctx.indicator::<SwingStructure<5, 10>>();

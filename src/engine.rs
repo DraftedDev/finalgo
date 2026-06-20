@@ -34,8 +34,8 @@ pub fn build() -> Engine {
     engine.add_indicator(SwingStructure::<10, 10>::new());
     engine.add_indicator(RelativeVolume::<20>::new());
     engine.add_indicator(RelStrengthIdx::<14>::new());
-    engine.add_indicator(MacroVeto::new());
     engine.add_indicator(MarketRegime::new());
+    engine.add_indicator(MacroVeto::new());
     engine.add_indicator(DynamicExits::new());
 
     engine.add_score(TrendScore::new());

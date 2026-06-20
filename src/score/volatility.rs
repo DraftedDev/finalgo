@@ -5,6 +5,9 @@ use crate::indicator::regime::MarketRegime;
 use crate::score::Score;
 use std::any::Any;
 
+/// Lookback window for the relative volatility Z-score.
+const VOL_LOOKBACK: usize = 100;
+
 /// # Volatility Score
 ///
 /// A score representing the market volatility of a stock.
@@ -102,8 +105,8 @@ impl Score for VolatilityScore {
         let atr = ctx.indicator::<AvgTrueRange<14>>();
         let bb = ctx.indicator::<BollingerBands<20, 2>>();
 
-        let atr_component = Self::relative_component(&atr.norm_atr, 100);
-        let bb_component = Self::relative_component(&bb.width, 100);
+        let atr_component = Self::relative_component(&atr.norm_atr, VOL_LOOKBACK);
+        let bb_component = Self::relative_component(&bb.width, VOL_LOOKBACK);
 
         let volatility =
             (atr_component * 0.40 + bb_component * 0.35 + regime_vol * 0.25).clamp(0.0, 1.0);

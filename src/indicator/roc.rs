@@ -1,49 +1,21 @@
 use crate::engine::Context;
 use crate::indicator::Indicator;
-use crate::math::z_score;
 use std::any::Any;
+
+/// Rolling window for Z-score normalization (~6 months of trading days).
+const Z_WINDOW: usize = 120;
 
 /// # Rate of Change Indicator
 ///
 /// Measures the percentage price change over a fixed lookback period.
 pub struct RateOfChange<const PERIOD: usize> {
     /// Rate of change over `PERIOD` bars.
-    ///
-    /// Computed as:
-    ///
-    /// ```text
-    /// ROC = (close_t - close_{t-PERIOD}) / close_{t-PERIOD}
-    /// ```
-    ///
-    /// Positive values indicate upward momentum.
-    /// Negative values indicate downward momentum.
     pub roc: Vec<f64>,
 
     /// Absolute rate of change.
-    ///
-    /// Computed as:
-    ///
-    /// ```text
-    /// |ROC|
-    /// ```
-    ///
-    /// Represents magnitude of movement regardless of direction.
-    /// Higher values indicate stronger momentum or volatility.
     pub roc_abs: Vec<f64>,
 
-    /// Z-score normalized ROC.
-    ///
-    /// Measures how extreme the current ROC is relative to its historical distribution.
-    ///
-    /// Computed as:
-    ///
-    /// ```text
-    /// z_score(roc)
-    /// ```
-    ///
-    /// - Values near 0: normal momentum
-    /// - Positive values: unusually strong upward momentum
-    /// - Negative values: unusually strong downward momentum
+    /// Rolling Z-score normalized ROC.
     pub roc_z: Vec<f64>,
 }
 
@@ -67,13 +39,26 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
         let closes = &ctx.data().closes;
         let len = closes.len();
 
-        assert!(len >= PERIOD, "Must have at least {PERIOD} samples");
+        assert!(len >= PERIOD, "Must have at least {PERIOD} samples for ROC");
 
-        self.roc = vec![0.0; len];
-        self.roc_abs = vec![0.0; len];
-        self.roc_z = vec![0.0; len];
+        self.roc.reserve(len);
+        self.roc_abs.reserve(len);
+        self.roc_z.reserve(len);
 
-        for i in PERIOD..len {
+        let mut ring = [0.0; Z_WINDOW];
+        let mut ring_idx = 0;
+        let mut sum = 0.0;
+        let mut sq_sum = 0.0;
+        let mut count = 0;
+
+        for i in 0..len {
+            if i < PERIOD {
+                self.roc.push(0.0);
+                self.roc_abs.push(0.0);
+                self.roc_z.push(0.0);
+                continue;
+            }
+
             let prev = closes[i - PERIOD];
             let curr = closes[i];
 
@@ -83,11 +68,29 @@ impl<const PERIOD: usize> Indicator for RateOfChange<PERIOD> {
                 0.0
             };
 
-            self.roc[i] = value;
-            self.roc_abs[i] = value.abs();
-        }
+            self.roc.push(value);
+            self.roc_abs.push(value.abs());
 
-        self.roc_z = z_score(&self.roc);
+            let old = ring[ring_idx];
+            sum -= old;
+            sq_sum -= old * old;
+
+            ring[ring_idx] = value;
+            sum += value;
+            sq_sum += value * value;
+
+            if count < Z_WINDOW {
+                count += 1;
+            }
+            ring_idx = (ring_idx + 1) % Z_WINDOW;
+
+            let mean = sum / count as f64;
+            let variance = ((sq_sum / count as f64) - (mean * mean)).max(0.0);
+            let std_dev = variance.sqrt().max(1e-12);
+
+            let z = (value - mean) / std_dev;
+            self.roc_z.push(z);
+        }
     }
 
     fn is_computed(&self) -> bool {

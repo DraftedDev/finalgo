@@ -13,15 +13,6 @@ use std::fmt::{Display, Formatter};
 /// # Final Score
 ///
 /// Aggregates all sub-scores into a single actionable signal and decision.
-///
-/// Requires:
-/// - `MarketRegime`
-/// - `MacroVeto`
-/// - `TrendScore`
-/// - `StrengthScore`
-/// - `VolatilityScore`
-/// - `QualityScore`
-/// - `ParticipationScore`
 pub struct FinalScore {
     pub score: f64,
     pub confidence: f64,
@@ -75,7 +66,8 @@ impl Score for FinalScore {
         let part = participation.participation.clamp(0.0, 1.0);
         let vol = volatility.volatility.clamp(0.0, 1.0);
 
-        let vol_factor = (1.0 - (vol * 2.0 - 1.0).abs()).clamp(0.1, 1.0);
+        let vol_factor = (vol * 1.5).clamp(0.1, 1.0);
+
         let env_raw = strength_val * 0.40 + qual * 0.40 + part * 0.20;
         let env_score = (env_raw * vol_factor).clamp(0.0, 1.0);
         let execution_multiplier = env_score.sqrt().clamp(0.1, 1.0);
@@ -103,8 +95,6 @@ impl Score for FinalScore {
         let long_threshold = (base_long - discount).max(0.05);
         let short_threshold = (base_short + discount).min(-0.05);
 
-        // FIX: Combined the veto checks into a single condition.
-        // If the macro environment vetoes the current direction, flatten the score to 0.0 (NEUTRAL).
         if (veto_shorts && final_score < 0.0) || (veto_longs && final_score > 0.0) {
             final_score = 0.0;
         }
@@ -132,6 +122,7 @@ impl Score for FinalScore {
     }
 }
 
+/// Zero-allocation decision enum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Decision {
     Long,
