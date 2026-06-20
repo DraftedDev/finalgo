@@ -28,7 +28,6 @@ pub fn build() -> Engine {
     engine.add_indicator(BollingerBands::<20, 2>::new());
     engine.add_indicator(BollingerBands::<30, 2>::new());
     engine.add_indicator(ExpMovAvg::<100>::new());
-    engine.add_indicator(ExpMovAvg::<600>::new());
     engine.add_indicator(RateOfChange::<10>::new());
     engine.add_indicator(EfficiencyRatio::<10, 3>::new());
     engine.add_indicator(SwingStructure::<5, 10>::new());

@@ -4,10 +4,10 @@ use crate::indicator::atr::AvgTrueRange;
 use std::any::Any;
 
 /// How many ATR units away to place the Stop-Loss.
-const LOSS_MULTI: f64 = 1.5;
+const LOSS_MULTI: f64 = 2.5;
 
 /// How many ATR units away to place the Take-Profit.
-const PROFIT_MULTI: f64 = 2.0;
+const PROFIT_MULTI: f64 = 4.5;
 
 /// # Dynamic Exits Indicator
 ///

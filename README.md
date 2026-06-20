@@ -53,7 +53,7 @@ Options:
 
 Runs the interface on the given target date and ticker.
 
-The stock symbol must have data from `TARGET - CANDLE_LOOK_BACK (610 candles)` to `TARGET`.
+The stock symbol must have data from `TARGET - CANDLE_LOOK_BACK (110 candles)` to `TARGET`.
 
 Predicted output is valid for `TARGET + HORIZON (5 trading days)`.
 
@@ -73,7 +73,7 @@ Arguments:
 
 Evaluates the algorithm on given tickers and outputs results of various metrics.
 
-The stock symbols must have data from `TARGET - CANDLE_LOOK_BACK (610 candles) * samples` to `TARGET`.
+The stock symbols must have data from `TARGET - CANDLE_LOOK_BACK (110 candles) * samples` to `TARGET`.
 
 ```
 Evaluate the algorithm with test data

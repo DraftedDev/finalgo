@@ -1,7 +1,7 @@
 /// The candle look back period.
 ///
 /// Fetched prediction stock data will have roughly this many candles.
-pub const CANDLE_LOOK_BACK: usize = 610;
+pub const CANDLE_LOOK_BACK: usize = 110;
 
 /// The target horizon of the algorithm.
 ///
