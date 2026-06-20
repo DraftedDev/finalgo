@@ -126,7 +126,19 @@ impl Evaluator {
             })
             .collect::<Vec<_>>();
 
-        results.sort_by(|a, b| b.alpha_score.partial_cmp(&a.alpha_score).unwrap());
+        results.sort_by(|a, b| {
+            let alpha_cmp = b
+                .alpha_score
+                .partial_cmp(&a.alpha_score)
+                .unwrap_or(std::cmp::Ordering::Equal);
+
+            let pf_cmp = b
+                .profit_factor
+                .partial_cmp(&a.profit_factor)
+                .unwrap_or(std::cmp::Ordering::Equal);
+
+            alpha_cmp.then(pf_cmp)
+        });
 
         for (i, r) in results.iter_mut().enumerate() {
             r.rank = i + 1;
