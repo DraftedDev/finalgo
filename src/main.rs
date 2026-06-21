@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
-use crate::cli::{Cli, Subcommand};
+use crate::cli::Cli;
 use clap::Parser;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -71,9 +71,6 @@ fn main() {
         .build()
         .expect("Failed to build tokio runtime")
         .block_on(async {
-            match cli.command.clone() {
-                Subcommand::Run(args) => cli.run(args).await,
-                Subcommand::Eval(args) => cli.eval(args).await,
-            }
+            cli::run(cli).await;
         });
 }
