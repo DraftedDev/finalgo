@@ -1,9 +1,10 @@
 use crate::consts::FETCH_RETRIES;
-use crate::utils;
 use crate::utils::FastMap;
-use apca::Client;
-use apca::data::v2::bars::Bar;
+use crate::{consts, utils};
+use apca::data::v2::bars::{Bar, ListError};
+use apca::{Client, RequestError};
 use chrono::Datelike;
+use std::time::Duration;
 use trading_calendar::{NaiveDate, Utc};
 
 /// The fetched stock data value with highs, lows, opens, closes, and volumes.
@@ -59,8 +60,23 @@ impl StockData {
         let mut response = client.issue::<apca::data::v2::bars::List>(&request).await;
         let mut retries = 1;
 
-        while response.is_err() && retries < FETCH_RETRIES {
-            tracing::warn!("Alpaca fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
+        while let Err(err) = &response
+            && retries < FETCH_RETRIES
+        {
+            if let RequestError::Endpoint(err) = err
+                && let ListError::RateLimitExceeded(_) = err
+            {
+                tracing::info!(
+                    "Rate limit reached. Waiting {}s...",
+                    consts::RATE_LIMIT_WAIT
+                );
+
+                tokio::time::sleep(Duration::from_secs(consts::RATE_LIMIT_WAIT)).await;
+            }
+
+            tracing::warn!("Alpaca fetch failed: {err}");
+            tracing::info!("Retrying ({retries}/{FETCH_RETRIES})...");
+
             response = client.issue::<apca::data::v2::bars::List>(&request).await;
             retries += 1;
         }
@@ -185,8 +201,23 @@ impl DataCache {
         let mut response = client.issue::<apca::data::v2::bars::List>(&request).await;
         let mut retries = 1;
 
-        while response.is_err() && retries < FETCH_RETRIES {
-            tracing::warn!("Alpaca cache fetch failed. Retrying ({retries}/{FETCH_RETRIES})...");
+        while let Err(err) = &response
+            && retries < FETCH_RETRIES
+        {
+            if let RequestError::Endpoint(err) = err
+                && let ListError::RateLimitExceeded(_) = err
+            {
+                tracing::info!(
+                    "Rate limit reached. Waiting {}s...",
+                    consts::RATE_LIMIT_WAIT
+                );
+
+                tokio::time::sleep(Duration::from_secs(consts::RATE_LIMIT_WAIT)).await;
+            }
+
+            tracing::warn!("Alpaca fetch failed: {err}");
+            tracing::info!("Retrying ({retries}/{FETCH_RETRIES})...");
+
             response = client.issue::<apca::data::v2::bars::List>(&request).await;
             retries += 1;
         }

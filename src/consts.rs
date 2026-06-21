@@ -23,3 +23,6 @@ pub const FETCH_CHUNK_SIZE: usize = 10;
 ///
 /// This is the minimum threshold at which the target direction will not be considered neutral.
 pub const TARGET_DEAD_ZONE: f64 = 0.015;
+
+/// How many seconds to wait after reaching a rate limit error from alpaca.
+pub const RATE_LIMIT_WAIT: u64 = 3;
