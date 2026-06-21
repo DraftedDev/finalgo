@@ -79,6 +79,7 @@ pub fn with_progress<R>(msg: &str, len: u64, f: impl FnOnce(tracing::Span) -> R)
     result
 }
 
+/// Build a client for the Alpaca API.
 pub fn client() -> Client {
     Client::new(
         ApiInfo::from_parts(
@@ -90,6 +91,7 @@ pub fn client() -> Client {
     )
 }
 
+/// Reads a secret from a file at `secrets` or from an environment variable as fallback.
 pub fn read_secret(name: &str) -> String {
     let path = Path::new("secrets").join(name);
 
@@ -97,6 +99,8 @@ pub fn read_secret(name: &str) -> String {
         std::fs::read_to_string(path)
             .expect("Failed to read secret")
             .replace(|c: char| c.is_whitespace() || c == '\r' || c == '\n', "")
+    } else if let Ok(secret) = std::env::var(name) {
+        secret
     } else {
         std::fs::write(&path, "").expect("Failed to write secret file");
 

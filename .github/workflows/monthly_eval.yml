@@ -1,0 +1,79 @@
+name: Monthly Algorithm Evaluation
+
+on:
+  schedule:
+    # Runs at 12:00 UTC on the 1st day of every month.
+    # (NASDAQ closes at 20:00 UTC, so the previous day's data is fully settled by 12:00 UTC).
+    - cron: '0 12 1 * *'
+  workflow_dispatch:
+
+jobs:
+  evaluate-and-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calculate Last NASDAQ Trading Day
+        id: trading_day
+        run: |
+          pip install pandas_market_calendars pandas
+          TARGET_DATE=$(python -c "
+          import pandas_market_calendars as mcal
+          import pandas as pd
+          from datetime import datetime, timedelta
+          
+          nasdaq = mcal.get_calendar('NASDAQ')
+          today = datetime.utcnow()
+          start = today - timedelta(days=30)
+          
+          schedule = nasdaq.schedule(start_date=start.strftime('%Y-%m-%d'), end_date=today.strftime('%Y-%m-%d'))
+          past_days = schedule.index[schedule.index < pd.Timestamp(today)]
+          
+          print(past_days[-1].strftime('%d.%m.%Y'))
+          ")
+          echo "TARGET_DATE=$TARGET_DATE" >> $GITHUB_ENV
+          echo "Calculated Target Date: $TARGET_DATE"
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Build Finalgo
+        run: cargo build --release
+
+      - name: Run Evaluation
+        env:
+          ALPACA_KEY: ${{ secrets.APCA_API_KEY_ID }}
+          ALPACA_SECRET: ${{ secrets.APCA_API_SECRET_KEY }}
+        run: |
+          mkdir -p reports
+          echo "Running evaluation for target date: $TARGET_DATE"
+          
+          sh finalgo.sh eval -o auto -r $TARGET_DATE GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FXE FXB FXY FXI VNQ XLB IWM XBI EEM EWZ
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: add monthly eval report for ${{ env.TARGET_DATE }}"
+          title: "Monthly Evaluation - ${{ env.TARGET_DATE }}"
+          body: |
+            Automated monthly evaluation run.
+            
+            **Target Date:** ${{ env.TARGET_DATE }}
+            **Assets Evaluated:** GDX, SIL, COPX, XLE, USO, DBA, HYG, LQD, IEF, EMB, UUP, FXE, FXB, FXY, FXI, VNQ, XLB, IWM, XBI, EEM, EWZ
+          branch: monthly-eval-${{ env.TARGET_DATE }}
+          base: main
+          delete-branch: true
