@@ -75,5 +75,5 @@ jobs:
             **Target Date:** ${{ env.TARGET_DATE }}
             **Assets Evaluated:** GDX, SIL, COPX, XLE, USO, DBA, HYG, LQD, IEF, EMB, UUP, FXE, FXB, FXY, FXI, VNQ, XLB, IWM, XBI, EEM, EWZ
           branch: monthly-eval-${{ env.TARGET_DATE }}
-          base: main
+          base: master
           delete-branch: true
