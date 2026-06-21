@@ -1,6 +1,7 @@
 use crate::math;
 use apca::{ApiInfo, Client};
 use indicatif::ProgressStyle;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
@@ -114,6 +115,7 @@ pub fn read_secret(name: &str) -> String {
 /// Inserted values are ordered by insertion order.
 ///
 /// The [Display] implementation of this structure will print the values in order.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ValueMap {
     fields: FastMap<String, Value>,
     order: Vec<String>,
@@ -192,7 +194,7 @@ impl Display for ValueMap {
 }
 
 /// A Value that can represent multiple native values.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Value {
     /// A float/double value.
     ///

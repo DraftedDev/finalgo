@@ -179,14 +179,23 @@ impl Cli {
         let eval = eval::build(args.stats);
 
         if args.rank {
-            let result = eval
-                .rank(fetched)
-                .into_iter()
-                .map(|r| r.to_string())
-                .collect::<Vec<_>>()
-                .join("\n");
+            let result = eval.rank(fetched);
 
-            tracing::info!("[######################### RANK #########################]\n{result}");
+            if let Some(path) = args.out {
+                tracing::info!("Writing output to '{path}'...");
+                let out =
+                    serde_json::to_string_pretty(&result).expect("Failed to serialize output");
+
+                std::fs::write(path, out).expect("Failed to write output");
+            } else {
+                let out = result
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                tracing::info!("[######################### RANK #########################]\n{out}");
+            }
         } else {
             let data = fetched
                 .into_iter()
@@ -195,7 +204,17 @@ impl Cli {
 
             let result = eval.eval(data);
 
-            tracing::info!("[######################### EVAL #########################]\n{result}");
+            if let Some(path) = args.out {
+                tracing::info!("Writing output to '{path}'...");
+                let out =
+                    serde_json::to_string_pretty(&result).expect("Failed to serialize output");
+
+                std::fs::write(path, out).expect("Failed to write output");
+            } else {
+                tracing::info!(
+                    "[######################### EVAL #########################]\n{result}"
+                );
+            }
         }
     }
 }
@@ -230,6 +249,9 @@ pub struct EvalArgs {
     /// Should the evaluator rank the tickers.
     #[arg(long = "rank", short = 'r')]
     pub rank: bool,
+    /// If set, the JSON output will be written to the given path.
+    #[arg(long = "out", short = 'o')]
+    pub out: Option<String>,
     /// The end date to use.
     pub end: String,
     /// The ticker to use.

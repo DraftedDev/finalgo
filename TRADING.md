@@ -41,8 +41,15 @@ not be in a constant bullish or bearish state.
 
 ## Running
 
-You can rank all these stocks by running:
+You can rank all these stocks by running the `eval` command with the `-r` flag.
+
+To keep track of evaluation runs, you can also use the `-o` flag to specify an output path to write the result as JSON
+to.
+
+**I recommend to use this command:**
 
 ```bash
-finalgo eval -r <TARGET> GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FXE FXB FXY FXI VNQ XLB IWM XBI EEM EWZ
+finalgo eval -o <OUTPUT> -r <TARGET> GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FXE FXB FXY FXI VNQ XLB IWM XBI EEM EWZ
 ```
+
+where `<TARGET>` is the target end date (e.g. `01.01.2026`) and `<OUTPUT>` is the output path (e.g. `01.01.2026.json`).

@@ -88,6 +88,7 @@ Options:
   -s, --stats              Should the evaluator include statistics for every registered score
   -c, --samples <SAMPLES>  The sample count to use [default: 250]
   -r, --rank               Should the evaluator rank the tickers
+  -o, --out <OUT>          If set, the JSON output will be written to the given path
 ```
 
 ## Real-World Usage

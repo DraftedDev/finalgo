@@ -6,6 +6,7 @@ use crate::eval::profit::ProfitLossMetric;
 use crate::eval::stats::StatsMetric;
 use crate::utils::{FastMap, ValueMap};
 use crate::{engine, math, utils};
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
@@ -149,7 +150,7 @@ impl Evaluator {
 }
 
 /// The evaluation rank of a ticker run.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvalRank {
     /// The rank of the ticker in the ranking list.
     pub rank: usize,
