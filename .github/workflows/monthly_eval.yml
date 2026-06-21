@@ -55,8 +55,8 @@ jobs:
 
       - name: Run Evaluation
         env:
-          ALPACA_KEY: ${{ secrets.APCA_API_KEY_ID }}
-          ALPACA_SECRET: ${{ secrets.APCA_API_SECRET_KEY }}
+          ALPACA_KEY: ${{ secrets.ALPACA_KEY }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
         run: |
           mkdir -p reports
           echo "Running evaluation for target date: $TARGET_DATE"
