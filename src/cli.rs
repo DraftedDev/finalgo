@@ -81,7 +81,7 @@ impl Cli {
     }
 
     /// Evaluates the finalgo algorithm with given arguments.
-    pub async fn eval(&self, args: EvalArgs) {
+    pub async fn eval(&self, mut args: EvalArgs) {
         let end = utils::parse_naive_date(&args.end);
 
         let warmup = args.samples.saturating_add(5);
@@ -136,6 +136,12 @@ impl Cli {
         }
 
         let tickers = args.tickers.clone();
+
+        if let Some(path) = args.out.as_mut()
+            && path.as_str() == "auto"
+        {
+            *path = format!("eval/{}.json", args.end);
+        }
 
         let fetched = utils::with_progress("Collecting", data.len() as u64, |span| {
             for chunk in data.chunks(FETCH_CHUNK_SIZE) {
@@ -249,7 +255,7 @@ pub struct EvalArgs {
     /// Should the evaluator rank the tickers.
     #[arg(long = "rank", short = 'r')]
     pub rank: bool,
-    /// If set, the JSON output will be written to the given path.
+    /// If set, the JSON output will be written to the given path or if 'auto' the path is automatically generated.
     #[arg(long = "out", short = 'o')]
     pub out: Option<String>,
     /// The end date to use.

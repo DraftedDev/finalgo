@@ -49,7 +49,8 @@ to.
 **I recommend to use this command:**
 
 ```bash
-finalgo eval -o <OUTPUT> -r <TARGET> GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FXE FXB FXY FXI VNQ XLB IWM XBI EEM EWZ
+finalgo eval -o auto -r <TARGET> GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FXE FXB FXY FXI VNQ XLB IWM XBI EEM EWZ
 ```
 
-where `<TARGET>` is the target end date (e.g. `01.01.2026`) and `<OUTPUT>` is the output path (e.g. `01.01.2026.json`).
+where `<TARGET>` is the target end date (e.g. `01.01.2026`) and `-o auto` will automatically generate an output path to
+write results to (`eval/<TARGET>.json`).
