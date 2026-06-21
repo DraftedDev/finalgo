@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  evaluate-and-pr:
+  evaluate:
     runs-on: ubuntu-latest
     permissions:
       contents: write
