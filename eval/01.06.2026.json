@@ -1,0 +1,212 @@
+[
+  {
+    "rank": 1,
+    "ticker": "USO",
+    "alpha_score": 301.37235608307566,
+    "profit_factor": 1.762941594260214,
+    "trades_taken": 49.2,
+    "win_rate": 56.09756097560976,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 2,
+    "ticker": "GDX",
+    "alpha_score": 231.60399095938087,
+    "profit_factor": 1.6097310761243646,
+    "trades_taken": 81.6,
+    "win_rate": 63.23529411764706,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 3,
+    "ticker": "SIL",
+    "alpha_score": 152.59310552908795,
+    "profit_factor": 1.4956173507653217,
+    "trades_taken": 80.0,
+    "win_rate": 59.0,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 4,
+    "ticker": "XBI",
+    "alpha_score": 147.02265238112426,
+    "profit_factor": 1.7164465491658005,
+    "trades_taken": 75.6,
+    "win_rate": 55.026455026455025,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 5,
+    "ticker": "COPX",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 6,
+    "ticker": "XLE",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 7,
+    "ticker": "DBA",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 8,
+    "ticker": "HYG",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 9,
+    "ticker": "LQD",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 10,
+    "ticker": "IEF",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 11,
+    "ticker": "EMB",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 12,
+    "ticker": "UUP",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 13,
+    "ticker": "FXE",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 14,
+    "ticker": "FXB",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 15,
+    "ticker": "FXY",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 16,
+    "ticker": "FXI",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 17,
+    "ticker": "VNQ",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 18,
+    "ticker": "XLB",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 19,
+    "ticker": "IWM",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 20,
+    "ticker": "EEM",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 21,
+    "ticker": "EWZ",
+    "alpha_score": 0.0,
+    "profit_factor": 99.99,
+    "trades_taken": 0.0,
+    "win_rate": 0.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  }
+]
