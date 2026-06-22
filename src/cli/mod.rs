@@ -4,6 +4,7 @@ mod eval;
 mod run;
 mod trade;
 
+/// Runs the finalgo Command-Line-Interface.
 pub async fn run(cli: Cli) {
     match cli.command {
         Subcommand::Run(args) => run::run(args).await,

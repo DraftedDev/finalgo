@@ -6,6 +6,7 @@ use crate::{engine, math, utils};
 
 /// Runs the finalgo algorithm with given arguments.
 pub async fn run(args: RunArgs) {
+    // Calculate target end date TARGET + HORIZON
     let target_end_date =
         utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
     let target_end_str = utils::format_naive_date(target_end_date);

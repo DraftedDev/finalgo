@@ -26,6 +26,8 @@ pub mod profit;
 pub mod stats;
 
 /// Builds the evaluator with the complete set of metrics.
+///
+/// Optionally adds the [StatsMetric] or sets the filtering parameter for the [ProfitLossMetric].
 pub fn build(stats: bool, filtering: bool) -> Evaluator {
     let mut evaluator = Evaluator::new();
 

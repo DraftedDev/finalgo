@@ -11,6 +11,7 @@ const MIN_ALPHA_SCORE: f64 = 10.0;
 
 /// Trade with the interface.
 pub async fn trade(args: TradeArgs) {
+    // Calculate end date of prediction TARGET + HORIZON
     let target_end = utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
     let target_end = utils::format_naive_date(target_end);
 
