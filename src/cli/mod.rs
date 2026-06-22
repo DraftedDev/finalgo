@@ -2,10 +2,12 @@ use clap::Parser;
 
 mod eval;
 mod run;
+mod trade;
 
 pub async fn run(cli: Cli) {
     match cli.command {
         Subcommand::Run(args) => run::run(args).await,
+        Subcommand::Trade(args) => trade::trade(args).await,
         Subcommand::Eval(args) => eval::eval(args).await,
     }
 }
@@ -23,6 +25,8 @@ pub struct Cli {
 pub enum Subcommand {
     /// Run the interface.
     Run(RunArgs),
+    /// Trade with the interface.
+    Trade(TradeArgs),
     /// Evaluate the algorithm with test data.
     Eval(EvalArgs),
 }
@@ -34,6 +38,16 @@ pub struct RunArgs {
     pub target: String,
     /// The ticker to use.
     pub ticker: String,
+}
+
+/// Arguments for the trade command.
+#[derive(Clone, Debug, Parser)]
+pub struct TradeArgs {
+    /// Path to a JSON file generated via `eval -r -o <PATH>` or 'auto' to automatically find the latest file.
+    #[arg(long = "data", short = 'd', default_value = "auto")]
+    pub data: String,
+    /// The target date to predict for.
+    pub target: String,
 }
 
 /// Arguments for the eval command.

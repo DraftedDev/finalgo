@@ -39,18 +39,36 @@ not be in a constant bullish or bearish state.
 - `EEM`: Emerging Markets
 - `EWZ`: Brazil ETF
 
-## Running
+## Ranked Evaluation
 
 You can rank all these stocks by running the `eval` command with the `-r` flag.
 
 To keep track of evaluation runs, you can also use the `-o` flag to specify an output path to write the result as JSON
-to.
+to. You may use `-o auto` to automatically generate an output path.
 
-**I recommend to use this command:**
+**Recommended Command:**
 
-```bash
+```shell
 finalgo eval -o auto -r <TARGET> GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FXE FXB FXY FXI VNQ XLB IWM XBI EEM EWZ
 ```
 
 where `<TARGET>` is the target end date (e.g. `01.01.2026`) and `-o auto` will automatically generate an output path to
 write results to (`eval/<TARGET>.json`).
+
+**NOTE:** This repository contains a workflow that automatically runs every month and commits the results into the
+`eval` directory. See the [Workflow](.github/workflows/monthly_eval.yml) for more.
+
+## Trading
+
+To start actually trading, you can use the `trade` command.
+The command will automatically select the latest JSON file from the `eval` directory if no data path is specified.
+
+Ideally, you only need to run:
+
+````shell
+finalgo trade <TARGET> 
+````
+
+where target is the current date or any other end date you want to use data from.
+
+The returned trading data will be valid for `TARGEt + HORIZON` days.

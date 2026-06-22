@@ -39,9 +39,10 @@ Command-line-interface to the finalgo algorithm
 Usage: finalgo <COMMAND>
 
 Commands:
-  run   Run the interface
-  eval  Evaluate the algorithm with test data
-  help  Print this message or the help of the given subcommand(s)
+  run    Run the interface
+  trade  Trade with the interface
+  eval   Evaluate the algorithm with test data
+  help   Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help  Print help
@@ -65,6 +66,32 @@ Usage: finalgo run <TARGET> <TICKER>
 Arguments:
   <TARGET>  The target date to predict for
   <TICKER>  The ticker to use
+```
+
+---
+
+#### `finalyst trade`
+
+Runs the interface and outputs trade results.
+
+Uses a data file generated via ranked evaluation (`finalgo eval -r`) to select tickers.
+
+The stock symbols inside the data file must have data from `TARGET - CANDLE_LOOK_BACK (110 candles)` to `TARGET`.
+
+Predicted output is valid for `TARGET + HORIZON (5 trading days)`.
+
+See [Trading Guide](./TRADING.md) for more information.
+
+```
+Trade with the interface
+
+Usage: finalgo trade [OPTIONS] <TARGET>
+
+Arguments:
+  <TARGET>  The target date to predict for
+
+Options:
+  -d, --data <DATA>  Path to a JSON file generated via `eval -r -o <PATH>` or 'auto' to automatically find the latest file [default: auto]
 ```
 
 ---
