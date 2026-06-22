@@ -232,16 +232,7 @@ impl Metric for ProfitLossMetric {
         let short_enabled =
             short_count >= MIN_DIRECTIONAL_TRADES && short_win_rate >= short_threshold;
 
-        let mut trades_taken = 0;
-        let mut wins = 0;
-        let mut losses = 0;
-        let mut gross_profit = 0.0;
-        let mut gross_loss = 0.0;
-        let mut total_return = 0.0;
-
-        let mut count = 0;
-        let mut mean = 0.0;
-        let mut m2 = 0.0;
+        let mut filtered_trades = Vec::new();
 
         for trade in &raw_trades {
             let is_allowed = if self.filtering {
@@ -257,10 +248,29 @@ impl Metric for ProfitLossMetric {
                 }
             };
 
-            if !is_allowed {
-                continue;
+            if is_allowed {
+                filtered_trades.push(*trade);
             }
+        }
 
+        let trades_to_evaluate = if self.filtering && filtered_trades.is_empty() {
+            raw_trades
+        } else {
+            filtered_trades
+        };
+
+        let mut trades_taken = 0;
+        let mut wins = 0;
+        let mut losses = 0;
+        let mut gross_profit = 0.0;
+        let mut gross_loss = 0.0;
+        let mut total_return = 0.0;
+
+        let mut count = 0;
+        let mut mean = 0.0;
+        let mut m2 = 0.0;
+
+        for trade in trades_to_evaluate {
             trades_taken += 1;
             total_return += trade.pnl;
 
@@ -273,8 +283,10 @@ impl Metric for ProfitLossMetric {
             }
 
             count += 1;
+
             let delta = trade.pnl - mean;
             mean += delta / count as f64;
+
             let delta2 = trade.pnl - mean;
             m2 += delta * delta2;
         }
@@ -299,8 +311,10 @@ impl Metric for ProfitLossMetric {
 
         let profit_factor = if gross_loss > 1e-9 {
             gross_profit / gross_loss
-        } else {
+        } else if trades_taken > 0 {
             99.99
+        } else {
+            0.0
         };
 
         let expectancy = if trades_taken > 0 {
@@ -339,6 +353,7 @@ impl Metric for ProfitLossMetric {
         if is_valid {
             let capped_pf = profit_factor.min(5.0);
             let raw_alpha = expectancy * (capped_pf - 1.0) * trade_frequency * sharpe;
+
             alpha_score = raw_alpha * ALPHA_SCALE;
         }
 
@@ -362,6 +377,7 @@ impl Metric for ProfitLossMetric {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 struct TradeOutcome {
     decision: Decision,
     pnl: f64,
