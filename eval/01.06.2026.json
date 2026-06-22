@@ -2,7 +2,7 @@
   {
     "rank": 1,
     "ticker": "USO",
-    "alpha_score": 301.37235608307566,
+    "alpha_score": 30.137235608307567,
     "profit_factor": 1.762941594260214,
     "trades_taken": 49.2,
     "win_rate": 56.09756097560976,
@@ -12,7 +12,7 @@
   {
     "rank": 2,
     "ticker": "GDX",
-    "alpha_score": 231.60399095938087,
+    "alpha_score": 23.160399095938086,
     "profit_factor": 1.6097310761243646,
     "trades_taken": 81.6,
     "win_rate": 63.23529411764706,
@@ -22,7 +22,7 @@
   {
     "rank": 3,
     "ticker": "SIL",
-    "alpha_score": 152.59310552908795,
+    "alpha_score": 15.259310552908795,
     "profit_factor": 1.4956173507653217,
     "trades_taken": 80.0,
     "win_rate": 59.0,
@@ -32,7 +32,7 @@
   {
     "rank": 4,
     "ticker": "XBI",
-    "alpha_score": 147.02265238112426,
+    "alpha_score": 14.702265238112428,
     "profit_factor": 1.7164465491658005,
     "trades_taken": 75.6,
     "win_rate": 55.026455026455025,

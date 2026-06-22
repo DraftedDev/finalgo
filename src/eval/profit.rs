@@ -7,7 +7,7 @@ use crate::utils::{Value, ValueMap};
 const FRICTION: f64 = 0.005;
 
 /// Scaling factor to make the Alpha Score human-readable.
-const ALPHA_SCALE: f64 = 30_000.0;
+const ALPHA_SCALE: f64 = 3_000.0;
 
 /// Minimum trades required in a direction to consider it statistically valid.
 const MIN_DIRECTIONAL_TRADES: usize = 5;

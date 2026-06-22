@@ -7,7 +7,7 @@ use crate::{engine, math, utils};
 use std::fmt::{Display, Formatter};
 
 /// The minimum alpha score required for a ticker to be considered for trading.
-const MIN_ALPHA_SCORE: f64 = 50.0;
+const MIN_ALPHA_SCORE: f64 = 10.0;
 
 /// Trade with the interface.
 pub async fn trade(args: TradeArgs) {
