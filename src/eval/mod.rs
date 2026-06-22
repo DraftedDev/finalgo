@@ -26,12 +26,12 @@ pub mod profit;
 pub mod stats;
 
 /// Builds the evaluator with the complete set of metrics.
-pub fn build(stats: bool) -> Evaluator {
+pub fn build(stats: bool, filtering: bool) -> Evaluator {
     let mut evaluator = Evaluator::new();
 
     evaluator.add_metric(PrecisionMetric);
     evaluator.add_metric(LossMetric);
-    evaluator.add_metric(ProfitLossMetric);
+    evaluator.add_metric(ProfitLossMetric::new(filtering));
 
     if stats {
         evaluator.add_metric(StatsMetric);

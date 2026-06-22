@@ -18,8 +18,16 @@ const DIRECTIONAL_MARGIN: f64 = 0.05;
 /// # Profit-Loss Metric
 ///
 /// Computes trading stats to eval the performance of the algorithm in terms of profit/loss.
-/// Automatically disables Long or Short directions if their precision is too bad.
-pub struct ProfitLossMetric;
+/// Can optionally disable Long or Short directions if their precision is too bad.
+pub struct ProfitLossMetric {
+    filtering: bool,
+}
+
+impl ProfitLossMetric {
+    pub fn new(filtering: bool) -> Self {
+        Self { filtering }
+    }
+}
 
 impl Metric for ProfitLossMetric {
     fn name(&self) -> String {
@@ -38,19 +46,23 @@ impl Metric for ProfitLossMetric {
             }
 
             let target = &sample.target;
+
             if target.opens.is_empty() {
                 continue;
             }
 
             let entry = target.opens[0];
+
             if !entry.is_finite() || entry.abs() < 1e-12 {
                 continue;
             }
 
             let exits = sample.engine.indicator::<DynamicExits>();
+
             if exits.sl_distance.is_empty() {
                 continue;
             }
+
             let last_idx = exits.sl_distance.len() - 1;
 
             let sl_dist = exits.sl_distance[last_idx];
@@ -187,11 +199,11 @@ impl Metric for ProfitLossMetric {
         } else {
             1.0
         };
+
         let long_threshold = long_breakeven + DIRECTIONAL_MARGIN;
         let long_enabled = long_count >= MIN_DIRECTIONAL_TRADES && long_win_rate >= long_threshold;
 
         let short_count = short_wins + short_losses;
-
         let short_win_rate = if short_count > 0 {
             short_wins as f64 / short_count as f64
         } else {
@@ -232,10 +244,17 @@ impl Metric for ProfitLossMetric {
         let mut m2 = 0.0;
 
         for trade in &raw_trades {
-            let is_allowed = match trade.decision {
-                Decision::Long => long_enabled,
-                Decision::Short => short_enabled,
-                Decision::Neutral => false,
+            let is_allowed = if self.filtering {
+                match trade.decision {
+                    Decision::Long => long_enabled,
+                    Decision::Short => short_enabled,
+                    Decision::Neutral => false,
+                }
+            } else {
+                match trade.decision {
+                    Decision::Long | Decision::Short => true,
+                    Decision::Neutral => false,
+                }
             };
 
             if !is_allowed {
@@ -323,7 +342,7 @@ impl Metric for ProfitLossMetric {
             alpha_score = raw_alpha * ALPHA_SCALE;
         }
 
-        ValueMap::new()
+        let mut map = ValueMap::new()
             .with("pnl_trades_taken", Value::Int(trades_taken as i64))
             .with("pnl_win_rate", Value::Percent(win_rate))
             .with("pnl_total_return", Value::Percent(total_return))
@@ -332,9 +351,14 @@ impl Metric for ProfitLossMetric {
             .with("pnl_profit_factor", Value::Float(profit_factor))
             .with("pnl_expectancy", Value::Percent(expectancy))
             .with("pnl_sharpe", Value::Float(sharpe))
-            .with("pnl_alpha_score", Value::Float(alpha_score))
-            .with("pnl_longs_enabled", Value::Bool(long_enabled))
-            .with("pnl_shorts_enabled", Value::Bool(short_enabled))
+            .with("pnl_alpha_score", Value::Float(alpha_score));
+
+        if self.filtering {
+            map.add("pnl_longs_enabled", Value::Bool(long_enabled));
+            map.add("pnl_shorts_enabled", Value::Bool(short_enabled));
+        }
+
+        map
     }
 }
 

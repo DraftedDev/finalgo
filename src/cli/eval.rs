@@ -108,7 +108,8 @@ pub async fn eval(mut args: EvalArgs) {
             .collect::<Vec<(String, Vec<(StockData, StockData)>)>>()
     });
 
-    let eval = crate::eval::build(args.stats);
+    // Enable filtering on ranked evaluation
+    let eval = crate::eval::build(args.stats, args.rank);
 
     if args.rank {
         let result = eval.rank(fetched);
