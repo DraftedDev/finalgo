@@ -213,6 +213,9 @@ pub enum Value {
     /// An integer value.
     Int(i64),
 
+    /// A boolean value
+    Bool(bool),
+
     /// A string value.
     String(String),
 }
@@ -241,6 +244,14 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Returns the value as `bool` or [None] if the value is not a boolean.
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Value {
@@ -249,6 +260,7 @@ impl Display for Value {
             Value::Float(fl) => write!(f, "{}", math::round_to(*fl, 2)),
             Value::Percent(p) => write!(f, "{} %", math::round_to(*p * 100.0, 2)),
             Value::Int(i) => write!(f, "{}", i),
+            Value::Bool(b) => write!(f, "{}", b),
             Value::String(s) => write!(f, "{}", s),
         }
     }

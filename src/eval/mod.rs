@@ -115,6 +115,8 @@ impl Evaluator {
                 let trades_taken = eval.get("pnl_trades_taken").as_int().unwrap() as f64;
                 let profit_factor = eval.get("pnl_profit_factor").as_float().unwrap();
                 let win_rate = eval.get("pnl_win_rate").as_percent().unwrap();
+                let longs_enabled = eval.get("pnl_longs_enabled").as_bool().unwrap();
+                let shorts_enabled = eval.get("pnl_shorts_enabled").as_bool().unwrap();
 
                 EvalRank {
                     rank: 0,
@@ -123,6 +125,8 @@ impl Evaluator {
                     profit_factor,
                     trades_taken: (trades_taken / total_trades) * 100.0,
                     win_rate: win_rate * 100.0,
+                    longs_enabled,
+                    shorts_enabled,
                 }
             })
             .collect::<Vec<_>>();
@@ -164,6 +168,10 @@ pub struct EvalRank {
     pub trades_taken: f64,
     /// The win rate computed by the [ProfitLossMetric].
     pub win_rate: f64,
+    /// If long trades should be enabled. Collected form the [ProfitLossMetric].
+    pub longs_enabled: bool,
+    /// If short trades should be enabled. Collected form the [ProfitLossMetric].
+    pub shorts_enabled: bool,
 }
 
 impl Display for EvalRank {
@@ -185,6 +193,8 @@ impl Display for EvalRank {
             math::round_to(self.trades_taken, 2)
         )?;
         writeln!(f, "      Win Rate: {}%", math::round_to(self.win_rate, 2))?;
+        writeln!(f, "      Longs Enabled: {}", self.longs_enabled)?;
+        writeln!(f, "      Shorts Enabled: {}", self.shorts_enabled)?;
 
         Ok(())
     }
