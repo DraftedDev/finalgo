@@ -10,8 +10,7 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 pub async fn eval(mut args: EvalArgs) {
     let end = utils::parse_naive_date(&args.end);
 
-    let warmup = args.samples.saturating_add(5);
-    let mut t = utils::subtract_naive_date(end, warmup);
+    let mut t = utils::subtract_naive_date(end, args.samples);
 
     tracing::info!(
         "Collecting {} samples of {} tickers each...",
