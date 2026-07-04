@@ -10,7 +10,11 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 pub async fn eval(mut args: EvalArgs) {
     let end = utils::parse_naive_date(&args.end);
 
-    let mut t = utils::subtract_naive_date(end, args.samples);
+    let shift = args
+        .samples
+        .saturating_add(TARGET_HORIZON)
+        .saturating_sub(1);
+    let mut t = utils::subtract_naive_date(end, shift);
 
     tracing::info!(
         "Collecting {} samples of {} tickers each...",
@@ -21,11 +25,9 @@ pub async fn eval(mut args: EvalArgs) {
     let mut data = Vec::with_capacity(args.samples * args.tickers.len());
 
     let first_t = t;
-    let mut last_target_end = t;
 
     for _ in 0..args.samples {
         let target_end = utils::add_naive_date(t, TARGET_HORIZON);
-        last_target_end = target_end;
 
         for ticker in &args.tickers {
             data.push((t, target_end, ticker.clone()));
@@ -35,7 +37,8 @@ pub async fn eval(mut args: EvalArgs) {
     }
 
     let absolute_start = utils::subtract_naive_date(first_t, CANDLE_LOOK_BACK);
-    let absolute_end = last_target_end;
+
+    let absolute_end = end;
 
     let mut cache = DataCache::new();
     let client = Arc::new(utils::client());
@@ -107,7 +110,6 @@ pub async fn eval(mut args: EvalArgs) {
             .collect::<Vec<(String, Vec<(StockData, StockData)>)>>()
     });
 
-    // Enable filtering on ranked evaluation
     let eval = crate::eval::build(args.stats, args.rank);
 
     if args.rank {

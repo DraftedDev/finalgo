@@ -100,7 +100,7 @@ Options:
 
 Evaluates the algorithm on given tickers and outputs results of various metrics.
 
-The stock symbols must have data from `TARGET - CANDLE_LOOK_BACK (110 candles) * samples` to `TARGET`.
+The stock symbols must have data from `(TARGET - CANDLE_LOOK_BACK (110 candles)) * samples` to `TARGET`.
 
 ```
 Evaluate the algorithm with test data
