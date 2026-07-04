@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Calculate Last NASDAQ Trading Day
+      - name: Calculate Target NASDAQ Trading Day (2 Days Ago)
         id: trading_day
         run: |
           pip install pandas_market_calendars pandas
@@ -39,7 +39,8 @@ jobs:
           schedule = nasdaq.schedule(start_date=start.strftime('%Y-%m-%d'), end_date=today.strftime('%Y-%m-%d'))
           past_days = schedule.index[schedule.index < pd.Timestamp(today)]
           
-          print(past_days[-1].strftime('%d.%m.%Y'))
+          # Grab the second-to-last trading day to account for Alpaca data delay
+          print(past_days[-2].strftime('%d.%m.%Y'))
           ")
           echo "TARGET_DATE=$TARGET_DATE" >> $GITHUB_ENV
           echo "Calculated Target Date: $TARGET_DATE"
