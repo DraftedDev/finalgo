@@ -1,10 +1,9 @@
-use crate::math;
-use apca::{ApiInfo, Client};
+use crate::{consts, math};
+use ibapi::Client;
 use indicatif::ProgressStyle;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::path::Path;
 use std::sync::LazyLock;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 use trading_calendar::{Market, NaiveDate, TradingCalendar};
@@ -80,36 +79,17 @@ pub fn with_progress<R>(msg: &str, len: u64, f: impl FnOnce(tracing::Span) -> R)
 }
 
 /// Build a client for the Alpaca API.
-pub fn client() -> Client {
-    Client::new(
-        ApiInfo::from_parts(
-            "https://data.alpaca.markets/",
-            read_secret("ALPACA_KEY"),
-            read_secret("ALPACA_SECRET"),
-        )
-        .expect("Failed to build Alpaca Client"),
-    )
-}
-
-/// Reads a secret from a file at `secrets` or from an environment variable as fallback.
-pub fn read_secret(name: &str) -> String {
-    let path = Path::new("secrets").join(name);
-
-    if path.exists() {
-        std::fs::read_to_string(path)
-            .expect("Failed to read secret")
-            .replace(|c: char| c.is_whitespace() || c == '\r' || c == '\n', "")
-    } else if let Ok(secret) = std::env::var(name) {
-        secret.replace(|c: char| c.is_whitespace() || c == '\r' || c == '\n', "")
-    } else {
-        std::fs::write(&path, "").expect("Failed to write secret file");
-
-        panic!(
-            "Secret '{}' not found. Write the secret to {} please.",
-            name,
-            path.display()
-        );
-    }
+pub async fn client(paper: bool) -> Client {
+    Client::builder()
+        .client_id(consts::IBKR_CLIENT_ID)
+        .address(if paper {
+            consts::IBKR_PAPER_ADDRESS
+        } else {
+            consts::IBKR_ADDRESS
+        })
+        .connect()
+        .await
+        .expect("Failed to connect to IBKR")
 }
 
 /// A [FastMap] of [Value]s.

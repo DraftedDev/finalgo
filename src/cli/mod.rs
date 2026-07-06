@@ -35,6 +35,9 @@ pub enum Subcommand {
 /// Arguments for the run command.
 #[derive(Clone, Debug, Parser)]
 pub struct RunArgs {
+    /// Should the interface run in paper-trading mode.
+    #[arg(long = "paper", short = 'p')]
+    pub paper: bool,
     /// The target date to predict for.
     pub target: String,
     /// The ticker to use.
@@ -44,6 +47,9 @@ pub struct RunArgs {
 /// Arguments for the trade command.
 #[derive(Clone, Debug, Parser)]
 pub struct TradeArgs {
+    /// Should the interface run in paper-trading mode.
+    #[arg(long = "paper", short = 'p')]
+    pub paper: bool,
     /// Path to a JSON file generated via `eval -r -o <PATH>` or 'auto' to automatically find the latest file.
     #[arg(long = "data", short = 'd', default_value = "auto")]
     pub data: String,

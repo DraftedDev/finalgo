@@ -11,8 +11,10 @@ pub async fn run(args: RunArgs) {
         utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
     let target_end_str = utils::format_naive_date(target_end_date);
 
+    let client = utils::client(args.paper).await;
+
     let data = StockData::fetch(
-        &utils::client(),
+        &client,
         &DataKey {
             end: args.target.clone(),
             size: CANDLE_LOOK_BACK,

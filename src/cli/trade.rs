@@ -34,11 +34,13 @@ pub async fn trade(args: TradeArgs) {
 
     let mut trades = Vec::with_capacity(tickers.len());
 
+    let client = utils::client(args.paper).await;
+
     for rank in tickers {
         tracing::info!("Computing trade for '{}'...", rank.ticker);
 
         let data = StockData::fetch(
-            &utils::client(),
+            &client,
             &DataKey {
                 end: args.target.clone(),
                 size: CANDLE_LOOK_BACK,

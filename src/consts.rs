@@ -1,7 +1,7 @@
 /// The candle look back period.
 ///
 /// Fetched prediction stock data will have roughly this many candles.
-pub const CANDLE_LOOK_BACK: usize = 110;
+pub const CANDLE_LOOK_BACK: usize = 200;
 
 /// The target horizon of the algorithm.
 ///
@@ -24,5 +24,11 @@ pub const FETCH_CHUNK_SIZE: usize = 10;
 /// This is the minimum threshold at which the target direction will not be considered neutral.
 pub const TARGET_DEAD_ZONE: f64 = 0.015;
 
-/// How many seconds to wait after reaching a rate limit error from alpaca.
-pub const RATE_LIMIT_WAIT: u64 = 3;
+/// The IBKR Client ID.
+pub const IBKR_CLIENT_ID: i32 = 0;
+
+/// The IBKR API endpoint address.
+pub const IBKR_ADDRESS: &str = "127.0.0.1:4001";
+
+/// The IBKR paper-trading API endpoint address.
+pub const IBKR_PAPER_ADDRESS: &str = "127.0.0.1:4002";

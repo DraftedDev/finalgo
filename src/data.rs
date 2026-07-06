@@ -1,11 +1,12 @@
 use crate::consts::FETCH_RETRIES;
+use crate::utils;
 use crate::utils::FastMap;
-use crate::{consts, utils};
-use apca::data::v2::bars::{Bar, ListError};
-use apca::{Client, RequestError};
 use chrono::Datelike;
+use ibapi::Client;
+use ibapi::contracts::Contract;
+use ibapi::market_data::historical;
+use ibapi::market_data::historical::{Bar, BarSize, BarTimestamp, WhatToShow};
 use std::time::Duration;
-use trading_calendar::{NaiveDate, Utc};
 
 /// The fetched stock data value with highs, lows, opens, closes, and volumes.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -18,114 +19,85 @@ pub struct StockData {
 }
 
 impl StockData {
-    /// Fetches the stock data from the Alpaca Finance API.
+    /// Fetches the stock data from the Interactive Brokers TWS/IB Gateway API.
     pub async fn fetch(client: &Client, key: &DataKey) -> Self {
         let end_date = utils::parse_naive_date(&key.end);
-        let start_date = utils::subtract_naive_date(end_date, key.size);
-        let api_end_date = utils::add_naive_date(end_date, 1);
 
-        let start_chrono =
-            NaiveDate::from_ymd_opt(start_date.year(), start_date.month(), start_date.day())
-                .expect("Invalid start date")
-                .and_hms_opt(0, 0, 0)
-                .expect("Invalid start time")
-                .and_local_timezone(Utc)
-                .unwrap();
-
-        let end_chrono = NaiveDate::from_ymd_opt(
-            api_end_date.year(),
-            api_end_date.month(),
-            api_end_date.day(),
+        let end_time_date = time::Date::from_calendar_date(
+            end_date.year(),
+            time::Month::try_from(end_date.month() as u8).unwrap(),
+            end_date.day() as u8,
         )
-        .expect("Invalid end date")
-        .and_hms_opt(0, 0, 0)
-        .expect("Invalid end time")
-        .and_local_timezone(Utc)
         .unwrap();
 
-        let request = apca::data::v2::bars::ListReqInit {
-            limit: None,
-            adjustment: Some(apca::data::v2::bars::Adjustment::Split),
-            feed: None,
-            page_token: None,
-            _non_exhaustive: (),
-        }
-        .init(
-            key.ticker.clone(),
-            start_chrono,
-            end_chrono,
-            apca::data::v2::bars::TimeFrame::OneDay,
-        );
+        let end_time = end_time_date.with_hms(23, 59, 59).unwrap().assume_utc();
 
-        let mut response = client.issue::<apca::data::v2::bars::List>(&request).await;
-        let mut retries = 1;
+        let mut retries = 0;
 
-        while let Err(err) = &response
-            && retries < FETCH_RETRIES
-        {
-            if let RequestError::Endpoint(err) = err
-                && let ListError::RateLimitExceeded(_) = err
-            {
-                tracing::info!(
-                    "Rate limit reached. Waiting {}s...",
-                    consts::RATE_LIMIT_WAIT
-                );
+        let bars = loop {
+            let contract = Contract::stock(&key.ticker)
+                .on_exchange("SMART")
+                .in_currency("USD")
+                .build();
 
-                tokio::time::sleep(Duration::from_secs(consts::RATE_LIMIT_WAIT)).await;
+            let res = client
+                .historical_data(&contract, BarSize::Day)
+                .what_to_show(WhatToShow::Trades)
+                .ending(end_time)
+                .duration(historical::Duration::days(key.size as i32))
+                .fetch()
+                .await;
+
+            match res {
+                Ok(data) => break data.bars,
+                Err(e) => {
+                    if retries < FETCH_RETRIES {
+                        tracing::warn!("IBKR fetch failed: {e}");
+                        retries += 1;
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    } else {
+                        panic!("Failed to fetch from IBKR after maximum retries: {e}");
+                    }
+                }
             }
-
-            tracing::warn!("Alpaca fetch failed: {err}");
-            tracing::info!("Retrying ({retries}/{FETCH_RETRIES})...");
-
-            response = client.issue::<apca::data::v2::bars::List>(&request).await;
-            retries += 1;
-        }
-
-        let bars_response = response.expect("Failed to fetch from Alpaca after maximum retries");
-        let bars = bars_response.bars;
+        };
 
         if bars.is_empty() {
-            panic!("Alpaca returned 0 bars for {}.", key.ticker);
+            panic!("IBKR returned 0 bars for {}.", key.ticker);
         }
 
         let last_bar = bars.last().unwrap();
-        let naive_date = last_bar.time.date_naive();
-        let last_date_str = format!(
+
+        let bar_date = match last_bar.date {
+            BarTimestamp::Date(d) => d,
+            BarTimestamp::DateTime(dt) => dt.date(),
+        };
+
+        let bar_date_str = format!(
             "{:02}.{:02}.{}",
-            naive_date.day(),
-            naive_date.month(),
-            naive_date.year()
+            bar_date.day(),
+            u8::from(bar_date.month()),
+            bar_date.year()
         );
 
-        if last_date_str != key.end {
+        if bar_date_str != key.end {
             panic!(
                 "Date mismatch for {}: requested {}, but latest candle is from {}.",
-                key.ticker, key.end, last_date_str
+                key.ticker, key.end, bar_date_str
             );
         }
 
         Self::from_bar(bars)
     }
 
+    /// Converts the IBKR Bar vector into our internal StockData structure.
     fn from_bar(bars: Vec<Bar>) -> Self {
         Self {
-            opens: bars
-                .iter()
-                .map(|b| b.open.to_f64().expect("Failed to parse open"))
-                .collect(),
-            highs: bars
-                .iter()
-                .map(|b| b.high.to_f64().expect("Failed to parse high"))
-                .collect(),
-            lows: bars
-                .iter()
-                .map(|b| b.low.to_f64().expect("Failed to parse low"))
-                .collect(),
-            closes: bars
-                .iter()
-                .map(|b| b.close.to_f64().expect("Failed to parse close"))
-                .collect(),
-            volumes: bars.iter().map(|b| b.volume as f64).collect(),
+            opens: bars.iter().map(|b| b.open).collect(),
+            highs: bars.iter().map(|b| b.high).collect(),
+            lows: bars.iter().map(|b| b.low).collect(),
+            closes: bars.iter().map(|b| b.close).collect(),
+            volumes: bars.iter().map(|b| b.volume).collect(),
         }
     }
 }
@@ -133,11 +105,8 @@ impl StockData {
 /// A key used to identify stock data.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct DataKey {
-    /// The size of the associated [StockData].
     pub size: usize,
-    /// The end date of the associated [StockData].
     pub end: String,
-    /// The ticker of the associated [StockData].
     pub ticker: String,
 }
 
@@ -163,69 +132,94 @@ impl DataCache {
     ) {
         let start_date = utils::parse_naive_date(&start);
         let end_date = utils::parse_naive_date(&end);
-        let api_end_date = utils::add_naive_date(end_date, 1);
 
-        let start_chrono =
-            NaiveDate::from_ymd_opt(start_date.year(), start_date.month(), start_date.day())
-                .expect("Invalid start date")
-                .and_hms_opt(0, 0, 0)
-                .expect("Invalid start time")
-                .and_local_timezone(Utc)
-                .unwrap();
-
-        let end_chrono = NaiveDate::from_ymd_opt(
-            api_end_date.year(),
-            api_end_date.month(),
-            api_end_date.day(),
+        let start_time_date = time::Date::from_calendar_date(
+            start_date.year(),
+            time::Month::try_from(start_date.month() as u8).unwrap(),
+            start_date.day() as u8,
         )
-        .expect("Invalid end date")
-        .and_hms_opt(0, 0, 0)
-        .expect("Invalid end time")
-        .and_local_timezone(Utc)
         .unwrap();
 
-        let request = apca::data::v2::bars::ListReqInit {
-            limit: Some(10000),
-            adjustment: Some(apca::data::v2::bars::Adjustment::Split),
-            feed: None,
-            page_token: None,
-            _non_exhaustive: (),
-        }
-        .init(
-            ticker.clone(),
-            start_chrono,
-            end_chrono,
-            apca::data::v2::bars::TimeFrame::OneDay,
-        );
+        let end_time_date = time::Date::from_calendar_date(
+            end_date.year(),
+            time::Month::try_from(end_date.month() as u8).unwrap(),
+            end_date.day() as u8,
+        )
+        .unwrap();
 
-        let mut response = client.issue::<apca::data::v2::bars::List>(&request).await;
-        let mut retries = 1;
+        let mut current_end = end_time_date.with_hms(23, 59, 59).unwrap().assume_utc();
+        let start_time = start_time_date.with_hms(0, 0, 0).unwrap().assume_utc();
 
-        while let Err(err) = &response
-            && retries < FETCH_RETRIES
-        {
-            if let RequestError::Endpoint(err) = err
-                && let ListError::RateLimitExceeded(_) = err
-            {
-                tracing::info!(
-                    "Rate limit reached. Waiting {}s...",
-                    consts::RATE_LIMIT_WAIT
+        let contract = Contract::stock(&ticker)
+            .on_exchange("SMART")
+            .in_currency("USD")
+            .build();
+
+        // Collect chunks in a separate vector to preserve chronological order
+        let mut chunks = Vec::new();
+
+        while current_end > start_time {
+            let mut chunk_retries = 0;
+
+            let bars = loop {
+                let res = client
+                    .historical_data(&contract, BarSize::Day)
+                    .what_to_show(WhatToShow::Trades)
+                    .ending(current_end)
+                    .duration(historical::Duration::YEAR)
+                    .fetch()
+                    .await;
+
+                match res {
+                    Ok(data) => break data.bars,
+                    Err(e) => {
+                        if chunk_retries < FETCH_RETRIES {
+                            tracing::warn!("IBKR chunk fetch failed for {}: {e}", ticker);
+                            chunk_retries += 1;
+                            tokio::time::sleep(Duration::from_secs(15)).await;
+                        } else {
+                            panic!(
+                                "Failed to fetch chunk from IBKR for {} after max retries: {e}",
+                                ticker
+                            );
+                        }
+                    }
+                }
+            };
+
+            if bars.is_empty() {
+                tracing::warn!(
+                    "IBKR returned 0 bars for chunk ending at {:?}. Stopping early.",
+                    current_end
                 );
-
-                tokio::time::sleep(Duration::from_secs(consts::RATE_LIMIT_WAIT)).await;
+                break;
             }
 
-            tracing::warn!("Alpaca fetch failed: {err}");
-            tracing::info!("Retrying ({retries}/{FETCH_RETRIES})...");
+            let oldest_bar_date = match &bars.first().unwrap().date {
+                BarTimestamp::Date(d) => *d,
+                BarTimestamp::DateTime(dt) => dt.date(),
+            };
 
-            response = client.issue::<apca::data::v2::bars::List>(&request).await;
-            retries += 1;
+            chunks.push(bars);
+
+            match oldest_bar_date.previous_day() {
+                Some(prev_day) => {
+                    current_end = prev_day.with_hms(23, 59, 59).unwrap().assume_utc();
+                }
+                None => break,
+            }
+
+            tokio::time::sleep(Duration::from_secs(2)).await;
         }
 
-        let bars_response = response.expect("Failed to fetch bulk data from Alpaca");
-        tracing::info!("Cached {} bars for {}", bars_response.bars.len(), ticker);
+        // Reverse newest-to-oldest order
+        let mut all_bars = Vec::new();
+        for chunk in chunks.into_iter().rev() {
+            all_bars.extend(chunk);
+        }
 
-        self.bars.insert(ticker, bars_response.bars);
+        tracing::info!("Cached {} bars for {}", all_bars.len(), ticker);
+        self.bars.insert(ticker, all_bars);
     }
 
     /// Slices the cached bars in memory to match the exact [DataKey] window.
@@ -233,13 +227,22 @@ impl DataCache {
         let bars = self.bars.get(&key.ticker)?;
         let end_date = utils::parse_naive_date(&key.end);
 
-        let mut end_idx = None;
-        for (i, bar) in bars.iter().enumerate().rev() {
-            let bar_date = bar.time.date_naive();
-            let bar_naive =
-                NaiveDate::from_ymd_opt(bar_date.year(), bar_date.month(), bar_date.day()).unwrap();
+        let end_date_time = time::Date::from_calendar_date(
+            end_date.year(),
+            time::Month::try_from(end_date.month() as u8).unwrap(),
+            end_date.day() as u8,
+        )
+        .unwrap();
 
-            if bar_naive <= end_date {
+        let mut end_idx = None;
+
+        for (i, bar) in bars.iter().enumerate().rev() {
+            let bar_date = match bar.date {
+                BarTimestamp::Date(d) => d,
+                BarTimestamp::DateTime(dt) => dt.date(),
+            };
+
+            if bar_date <= end_date_time {
                 end_idx = Some(i);
                 break;
             }

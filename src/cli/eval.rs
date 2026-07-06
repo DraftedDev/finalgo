@@ -41,7 +41,7 @@ pub async fn eval(mut args: EvalArgs) {
     let absolute_end = end;
 
     let mut cache = DataCache::new();
-    let client = Arc::new(utils::client());
+    let client = Arc::new(utils::client(false).await);
 
     tracing::info!("Pre-fetching data into cache...");
     for ticker in &args.tickers {
