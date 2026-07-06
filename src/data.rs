@@ -3,7 +3,6 @@ use crate::utils;
 use crate::utils::FastMap;
 use chrono::Datelike;
 use ibapi::Client;
-use ibapi::contracts::Contract;
 use ibapi::market_data::historical;
 use ibapi::market_data::historical::{Bar, BarSize, BarTimestamp, WhatToShow};
 use std::time::Duration;
@@ -35,10 +34,7 @@ impl StockData {
         let mut retries = 0;
 
         let bars = loop {
-            let contract = Contract::stock(&key.ticker)
-                .on_exchange("SMART")
-                .in_currency("USD")
-                .build();
+            let contract = utils::contract(&key.ticker);
 
             let res = client
                 .historical_data(&contract, BarSize::Day)
@@ -150,10 +146,7 @@ impl DataCache {
         let mut current_end = end_time_date.with_hms(23, 59, 59).unwrap().assume_utc();
         let start_time = start_time_date.with_hms(0, 0, 0).unwrap().assume_utc();
 
-        let contract = Contract::stock(&ticker)
-            .on_exchange("SMART")
-            .in_currency("USD")
-            .build();
+        let contract = utils::contract(&ticker);
 
         // Collect chunks in a separate vector to preserve chronological order
         let mut chunks = Vec::new();

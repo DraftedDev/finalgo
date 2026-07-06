@@ -1,9 +1,11 @@
 use crate::{consts, math};
 use ibapi::Client;
+use ibapi::contracts::Contract;
 use indicatif::ProgressStyle;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::io::Write;
 use std::sync::LazyLock;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 use trading_calendar::{Market, NaiveDate, TradingCalendar};
@@ -49,6 +51,20 @@ pub fn add_naive_date(date: NaiveDate, count: usize) -> NaiveDate {
     result
 }
 
+/// Prompts the user for input.
+pub fn prompt(prompt: &str) -> String {
+    print!("{} ", prompt);
+
+    std::io::stdout().flush().expect("Failed to flush stdout");
+
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to read line from stdin");
+
+    input.trim().to_lowercase()
+}
+
 /// Runs a function with a progress bar in order to display progress to the end user.
 ///
 /// The bar can be progressed by calling [tracing::Span::pb_inc] or similar methods.
@@ -78,7 +94,7 @@ pub fn with_progress<R>(msg: &str, len: u64, f: impl FnOnce(tracing::Span) -> R)
     result
 }
 
-/// Build a client for the Alpaca API.
+/// Build a client for the IBKR API.
 pub async fn client(paper: bool) -> Client {
     Client::builder()
         .client_id(consts::IBKR_CLIENT_ID)
@@ -90,6 +106,14 @@ pub async fn client(paper: bool) -> Client {
         .connect()
         .await
         .expect("Failed to connect to IBKR")
+}
+
+/// Builds a client contract for the IBKR API.
+pub fn contract(ticker: &str) -> Contract {
+    Contract::stock(ticker)
+        .in_currency("USD")
+        .on_exchange("SMART")
+        .build()
 }
 
 /// A [FastMap] of [Value]s.

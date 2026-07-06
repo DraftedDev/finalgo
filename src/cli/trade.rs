@@ -4,6 +4,7 @@ use crate::data::{DataKey, StockData};
 use crate::eval::EvalRank;
 use crate::score::final_score::{Decision, FinalScore};
 use crate::{engine, math, utils};
+use ibapi::orders::{Action, Order};
 use std::fmt::{Display, Formatter};
 
 /// The minimum alpha score required for a ticker to be considered for trading.
@@ -103,8 +104,96 @@ pub async fn trade(args: TradeArgs) {
 
     tracing::info!("[######################### TRADES #########################]");
 
-    for trade in trades {
+    for trade in &trades {
         println!("{trade}");
+    }
+
+    if utils::prompt("Proceed with trades? [y/n] ") == "y" {
+        for trade in trades {
+            if trade.decision == Decision::Neutral {
+                tracing::info!("Skipping NEUTRAL decision for '{}'.", trade.ticker);
+                continue;
+            }
+
+            tracing::info!("Stock '{}' at {}", trade.ticker, trade.entry_price);
+
+            let quantity = utils::prompt("How much to trade? [float]")
+                .parse::<f64>()
+                .expect("Failed to parse quantity");
+
+            if quantity <= 0.0 {
+                tracing::info!("Quantity <= 0.0. Skipping trade...");
+                continue;
+            }
+
+            tracing::info!("Executing Bracket Order for '{}'...", trade.ticker);
+
+            let contract = utils::contract(&trade.ticker);
+
+            let parent_id = client.next_order_id();
+            let tp_id = client.next_order_id();
+            let sl_id = client.next_order_id();
+
+            let (entry_action, exit_action) = if trade.decision == Decision::Long {
+                (Action::Buy, Action::Sell)
+            } else {
+                (Action::Sell, Action::Buy)
+            };
+
+            let parent = Order {
+                order_id: parent_id,
+                action: entry_action,
+                total_quantity: quantity,
+                order_type: "LMT".to_string(),
+                limit_price: Some(trade.entry_price),
+                transmit: false,
+                ..Default::default()
+            };
+
+            let take_profit = Order {
+                order_id: tp_id,
+                action: exit_action,
+                total_quantity: quantity,
+                order_type: "LMT".to_string(),
+                limit_price: Some(trade.take_profit),
+                parent_id,
+                transmit: false,
+                ..Default::default()
+            };
+
+            let stop_loss = Order {
+                order_id: sl_id,
+                action: exit_action,
+                total_quantity: quantity,
+                order_type: "STP".to_string(),
+                aux_price: Some(trade.stop_loss),
+                parent_id,
+                transmit: true,
+                ..Default::default()
+            };
+
+            let _ = client
+                .place_order(parent_id, &contract, &parent)
+                .await
+                .expect("Failed to place parent");
+
+            let _ = client
+                .place_order(tp_id, &contract, &take_profit)
+                .await
+                .expect("Failed to place TP");
+
+            let _ = client
+                .place_order(sl_id, &contract, &stop_loss)
+                .await
+                .expect("Failed to place SL");
+
+            tracing::info!(
+                "Bracket order for '{}' submitted successfully!",
+                trade.ticker
+            );
+        }
+    } else {
+        tracing::info!("Aborting trades...");
     }
 }
 
