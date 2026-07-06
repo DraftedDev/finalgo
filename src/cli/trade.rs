@@ -1,4 +1,4 @@
-use crate::cli::TradeArgs;
+use crate::cli::{Cli, TradeArgs};
 use crate::consts::{CANDLE_LOOK_BACK, TARGET_HORIZON};
 use crate::data::{DataKey, StockData};
 use crate::eval::EvalRank;
@@ -11,7 +11,7 @@ use std::fmt::{Display, Formatter};
 const MIN_ALPHA_SCORE: f64 = 10.0;
 
 /// Trade with the interface.
-pub async fn trade(args: TradeArgs) {
+pub async fn trade(cli: Cli, args: TradeArgs) {
     // Calculate end date of prediction TARGET + HORIZON
     let target_end = utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
     let target_end = utils::format_naive_date(target_end);
@@ -35,7 +35,7 @@ pub async fn trade(args: TradeArgs) {
 
     let mut trades = Vec::with_capacity(tickers.len());
 
-    let client = utils::client(args.paper).await;
+    let client = utils::client(cli.paper).await;
 
     for rank in tickers {
         tracing::info!("Computing trade for '{}'...", rank.ticker);

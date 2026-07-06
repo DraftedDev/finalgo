@@ -1,17 +1,17 @@
-use crate::cli::RunArgs;
+use crate::cli::{Cli, RunArgs};
 use crate::consts::{CANDLE_LOOK_BACK, TARGET_HORIZON};
 use crate::data::{DataKey, StockData};
 use crate::score::final_score::{Decision, FinalScore};
 use crate::{engine, math, utils};
 
 /// Runs the finalgo algorithm with given arguments.
-pub async fn run(args: RunArgs) {
+pub async fn run(cli: Cli, args: RunArgs) {
     // Calculate target end date TARGET + HORIZON
     let target_end_date =
         utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
     let target_end_str = utils::format_naive_date(target_end_date);
 
-    let client = utils::client(false).await;
+    let client = utils::client(cli.paper).await;
 
     let data = StockData::fetch(
         &client,

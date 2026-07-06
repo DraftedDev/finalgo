@@ -6,16 +6,19 @@ mod trade;
 
 /// Runs the finalgo Command-Line-Interface.
 pub async fn run(cli: Cli) {
-    match cli.command {
-        Subcommand::Run(args) => run::run(args).await,
-        Subcommand::Trade(args) => trade::trade(args).await,
-        Subcommand::Eval(args) => eval::eval(args).await,
+    match cli.command.clone() {
+        Subcommand::Run(args) => run::run(cli, args).await,
+        Subcommand::Trade(args) => trade::trade(cli, args).await,
+        Subcommand::Eval(args) => eval::eval(cli, args).await,
     }
 }
 
 /// Command-line-interface to the finalgo algorithm.
 #[derive(Clone, Debug, Parser)]
 pub struct Cli {
+    /// Should the interface connect to IB-Gateway in paper-trading mode.
+    #[arg(long = "paper", short = 'p')]
+    pub paper: bool,
     /// The subcommand to run.
     #[command(subcommand)]
     pub command: Subcommand,
@@ -44,9 +47,6 @@ pub struct RunArgs {
 /// Arguments for the trade command.
 #[derive(Clone, Debug, Parser)]
 pub struct TradeArgs {
-    /// Should the interface run in paper-trading mode.
-    #[arg(long = "paper", short = 'p')]
-    pub paper: bool,
     /// Path to a JSON file generated via `eval -r -o <PATH>` or 'auto' to automatically find the latest file.
     #[arg(long = "data", short = 'd', default_value = "auto")]
     pub data: String,

@@ -1,4 +1,4 @@
-use crate::cli::EvalArgs;
+use crate::cli::{Cli, EvalArgs};
 use crate::consts::{CANDLE_LOOK_BACK, FETCH_CHUNK_SIZE, TARGET_HORIZON};
 use crate::data::{DataCache, DataKey, StockData};
 use crate::utils;
@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Evaluates the finalgo algorithm with given arguments.
-pub async fn eval(mut args: EvalArgs) {
+pub async fn eval(cli: Cli, mut args: EvalArgs) {
     let end = utils::parse_naive_date(&args.end);
 
     let shift = args
@@ -41,7 +41,7 @@ pub async fn eval(mut args: EvalArgs) {
     let absolute_end = end;
 
     let mut cache = DataCache::new();
-    let client = Arc::new(utils::client(false).await);
+    let client = Arc::new(utils::client(cli.paper).await);
 
     tracing::info!("Pre-fetching data into cache...");
     for ticker in &args.tickers {

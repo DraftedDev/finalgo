@@ -43,7 +43,8 @@ Commands:
   help   Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help  Print help
+  -p, --paper  Should the interface connect to IB-Gateway in paper-trading mode
+  -h, --help   Print help
 ```
 
 ---
@@ -89,7 +90,6 @@ Arguments:
   <TARGET>  The target date to predict for
 
 Options:
-  -p, --paper        Should the interface run in paper-trading mode
   -d, --data <DATA>  Path to a JSON file generated via `eval -r -o <PATH>` or 'auto' to automatically find the latest file [default: auto]
 ```
 
