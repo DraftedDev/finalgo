@@ -8,7 +8,7 @@ use ibapi::orders::{Action, Order};
 use std::fmt::{Display, Formatter};
 
 /// The minimum alpha score required for a ticker to be considered for trading.
-const MIN_ALPHA_SCORE: f64 = 10.0;
+const MIN_ALPHA_SCORE: f64 = 5.0;
 
 /// Trade with the interface.
 pub async fn trade(cli: Cli, args: TradeArgs) {
