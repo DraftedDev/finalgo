@@ -16,7 +16,7 @@ It's written in Rust and uses the Alpaca Finance API for fetching market data fo
 
 ## Features
 
-- Free Data fetching from the Alpaca Finance API.
+- Free Data fetching from the Interactive Brokers API.
 - Bulk-fetches data to not hit the API limits.
 - Complete Engine + Indicators + Scores + Metrics architecture.
 - Open-Source and licensed under the [MIT-License](./LICENSE).
@@ -25,11 +25,9 @@ It's written in Rust and uses the Alpaca Finance API for fetching market data fo
 
 The project itself is a binary and contains a CLI with different commands.
 
-Since FinalGo uses the Alpaca Finance API, an account and API key are required.
-
-Store the API key in `secrets/ALPACA_KEY` and the API secret in `secrets/ALPACA_SECRET`.
-
-Git ignores these files, so you can commit changes without needing to worry about them.
+Since FinalGo uses the [Interactive Brokers](https://www.interactivebrokers.com/) API, an IBKR account is required.
+Users should also install the [IB Gateway](https://www.interactivebrokers.com/en/trading/ibgateway-latest.php) Companion
+App, log in and let it run in the background.
 
 ### Command-Line-Interface
 
@@ -76,7 +74,7 @@ Runs the interface and outputs trade results.
 
 Uses a data file generated via ranked evaluation (`finalgo eval -r`) to select tickers.
 
-The stock symbols inside the data file must have data from `TARGET - CANDLE_LOOK_BACK (110 candles)` to `TARGET`.
+The stock symbols inside the data file must have data from `TARGET - CANDLE_LOOK_BACK (150 candles)` to `TARGET`.
 
 Predicted output is valid for `TARGET + HORIZON (5 trading days)`.
 
@@ -91,6 +89,7 @@ Arguments:
   <TARGET>  The target date to predict for
 
 Options:
+  -p, --paper        Should the interface run in paper-trading mode
   -d, --data <DATA>  Path to a JSON file generated via `eval -r -o <PATH>` or 'auto' to automatically find the latest file [default: auto]
 ```
 
@@ -100,7 +99,7 @@ Options:
 
 Evaluates the algorithm on given tickers and outputs results of various metrics.
 
-The stock symbols must have data from `(TARGET - CANDLE_LOOK_BACK (110 candles)) * samples` to `TARGET`.
+The stock symbols must have data from `(TARGET - CANDLE_LOOK_BACK (150 candles)) * samples` to `TARGET`.
 
 ```
 Evaluate the algorithm with test data

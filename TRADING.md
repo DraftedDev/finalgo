@@ -3,12 +3,8 @@
 ## Setup
 
 The algorithm isn't fit for a single stock or simply letting it run on some symbols.
-I recommend to evaluate it on multiple stock symbols periodically to get the best results.
-
-## Evaluating
-
-If following this approach of periodically evaluating the algorithm,
-I recommend doing that once a month to catch new market conditions.
+I recommend to evaluate it on multiple stock symbols periodically to get the best results. Ideally every month to catch
+new Market Conditions.
 
 ## Target Stocks
 
@@ -54,9 +50,6 @@ finalgo eval -o auto -r <TARGET> GDX SIL COPX XLE USO DBA HYG LQD IEF EMB UUP FX
 
 where `<TARGET>` is the target end date (e.g. `01.01.2026`) and `-o auto` will automatically generate an output path to
 write results to (`eval/<TARGET>.json`).
-
-**NOTE:** This repository contains a workflow that automatically runs every month and commits the results into the
-`eval` directory. See the [Workflow](.github/workflows/monthly_eval.yml) for more.
 
 ## Trading
 

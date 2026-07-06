@@ -35,9 +35,6 @@ pub enum Subcommand {
 /// Arguments for the run command.
 #[derive(Clone, Debug, Parser)]
 pub struct RunArgs {
-    /// Should the interface run in paper-trading mode.
-    #[arg(long = "paper", short = 'p')]
-    pub paper: bool,
     /// The target date to predict for.
     pub target: String,
     /// The ticker to use.
