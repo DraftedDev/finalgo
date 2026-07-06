@@ -29,6 +29,9 @@ Since FinalGo uses the [Interactive Brokers](https://www.interactivebrokers.com/
 Users should also install the [IB Gateway](https://www.interactivebrokers.com/en/trading/ibgateway-latest.php) Companion
 App, log in and let it run in the background.
 
+**NOTE:** By default, the paper-trading mode is permanently enabled. To enable real-life trading, you need to set the
+environment variable `ALLOW_TRADING` to `1`. Proceed with caution!
+
 ### Command-Line-Interface
 
 ```

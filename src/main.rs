@@ -38,7 +38,7 @@ mod utils;
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() {
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
 
     let indicatif_tracing = tracing_indicatif::IndicatifLayer::new();
     let level = std::env::var("LOG_LEVEL").unwrap_or("info".to_string());
@@ -65,6 +65,13 @@ fn main() {
         "Running finalgo v{} by Mikail Plotzky...",
         env!("CARGO_PKG_VERSION")
     );
+
+    if std::env::var("ALLOW_TRADING").unwrap_or("0".to_string()) == "1" {
+        tracing::info!("Real-Life trading is enabled. Proceed with caution!");
+    } else {
+        tracing::info!("Real-Life Trading is disabled. Switching to paper-trading mode...");
+        cli.paper = true;
+    }
 
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
