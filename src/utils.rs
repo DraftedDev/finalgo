@@ -51,18 +51,51 @@ pub fn add_naive_date(date: NaiveDate, count: usize) -> NaiveDate {
     result
 }
 
+pub fn prompt_confirm(msg: impl Display) -> bool {
+    prompt(format!("{msg} [y/n] "), |s| {
+        if s == "y" || s == "n" {
+            Ok(s == "y")
+        } else {
+            Err("Invalid Input. Valid: 'y' or 'n'.".to_string())
+        }
+    })
+}
+
+pub fn prompt_float(msg: impl Display) -> f64 {
+    prompt(format!("{msg} [float]"), |s| {
+        s.parse::<f64>()
+            .map_err(|_| "Failed to parse float".to_string())
+    })
+}
+
 /// Prompts the user for input.
-pub fn prompt(prompt: &str) -> String {
-    print!("{} ", prompt);
+pub fn prompt<T>(prompt: impl Display, parse: impl Fn(&str) -> Result<T, String>) -> T {
+    let mut input = String::with_capacity(4);
 
-    std::io::stdout().flush().expect("Failed to flush stdout");
+    loop {
+        input.clear();
 
-    let mut input = String::new();
-    std::io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line from stdin");
+        print!("{} ", prompt);
+        std::io::stdout().flush().expect("Failed to flush stdout");
 
-    input.trim().to_lowercase()
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line from stdin");
+
+        if input.is_empty() {
+            continue;
+        }
+
+        let parsed = parse(input.trim());
+
+        match parsed {
+            Ok(out) => break out,
+            Err(err) => {
+                tracing::error!("{err}");
+                continue;
+            }
+        }
+    }
 }
 
 /// Runs a function with a progress bar in order to display progress to the end user.

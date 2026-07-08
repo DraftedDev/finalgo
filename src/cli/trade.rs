@@ -108,18 +108,16 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
         println!("{trade}");
     }
 
-    if utils::prompt("Proceed with trades? [y/n] ") == "y" {
+    if utils::prompt_confirm("Proceed with trades?") {
         for trade in trades {
             if trade.decision == Decision::Neutral {
                 tracing::info!("Skipping NEUTRAL decision for '{}'.", trade.ticker);
                 continue;
             }
 
-            tracing::info!("Stock '{}' at {}", trade.ticker, trade.entry_price);
+            tracing::info!("Trading: {trade:#?}");
 
-            let quantity = utils::prompt("How much to trade? [float]")
-                .parse::<f64>()
-                .expect("Failed to parse quantity");
+            let quantity = utils::prompt_float("How much to trade?");
 
             if quantity <= 0.0 {
                 tracing::info!("Quantity <= 0.0. Skipping trade...");
@@ -173,17 +171,17 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
             };
 
             let _ = client
-                .place_order(parent_id, &contract, &parent)
+                .submit_order(parent_id, &contract, &parent)
                 .await
                 .expect("Failed to place parent");
 
-            let _ = client
-                .place_order(tp_id, &contract, &take_profit)
+            client
+                .submit_order(tp_id, &contract, &take_profit)
                 .await
                 .expect("Failed to place TP");
 
-            let _ = client
-                .place_order(sl_id, &contract, &stop_loss)
+            client
+                .submit_order(sl_id, &contract, &stop_loss)
                 .await
                 .expect("Failed to place SL");
 
@@ -197,6 +195,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
     }
 }
 
+#[derive(Debug)]
 struct Trade {
     ticker: String,
     decision: Decision,
