@@ -9,7 +9,7 @@ license = "MIT"
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
-ibapi = "3.1.0"
+ibapi = "3.2.0"
 tokio = { version = "1.52.3", features = ["rt", "net", "time"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

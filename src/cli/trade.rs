@@ -94,10 +94,10 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
             ticker: rank.ticker,
             decision,
             target_end: target_end.clone(),
-            entry_price,
-            stop_loss,
-            take_profit,
-            alpha_score: rank.alpha_score,
+            entry_price: math::round_to(entry_price, 2),
+            stop_loss: math::round_to(stop_loss, 2),
+            take_profit: math::round_to(take_profit, 2),
+            alpha_score: math::round_to(rank.alpha_score, 2),
             specifics,
         });
     }
@@ -116,7 +116,6 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
             }
 
             tracing::info!("Trading: {trade:#?}");
-
             let quantity = utils::prompt_float("How much to trade?");
 
             if quantity <= 0.0 {
@@ -170,26 +169,26 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 ..Default::default()
             };
 
-            let _ = client
+            client
                 .submit_order(parent_id, &contract, &parent)
                 .await
                 .expect("Failed to place parent");
-
             client
                 .submit_order(tp_id, &contract, &take_profit)
                 .await
                 .expect("Failed to place TP");
-
             client
                 .submit_order(sl_id, &contract, &stop_loss)
                 .await
                 .expect("Failed to place SL");
 
-            tracing::info!(
-                "Bracket order for '{}' submitted successfully!",
-                trade.ticker
-            );
+            tracing::info!("Bracket order for '{}' sent to socket!", trade.ticker);
         }
+
+        // FIX: Keep the connection alive to let IB Gateway process the orders!
+        tracing::info!("Waiting for IBKR to acknowledge and assemble the brackets...");
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        tracing::info!("Orders successfully submitted to IBKR. You can now check TWS/IB Gateway.");
     } else {
         tracing::info!("Aborting trades...");
     }
