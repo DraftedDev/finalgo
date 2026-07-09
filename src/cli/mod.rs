@@ -40,8 +40,8 @@ pub enum Subcommand {
 pub struct RunArgs {
     /// The target date to predict for.
     pub target: String,
-    /// The ticker to use.
-    pub ticker: String,
+    /// The symbol to use.
+    pub symbol: String,
 }
 
 /// Arguments for the trade command.
@@ -63,7 +63,7 @@ pub struct EvalArgs {
     /// The sample count to use.
     #[arg(long = "samples", short = 'c', default_value_t = 250)]
     pub samples: usize,
-    /// Should the evaluator rank the tickers.
+    /// Should the evaluator rank the symbols.
     #[arg(long = "rank", short = 'r')]
     pub rank: bool,
     /// If set, the JSON output will be written to the given path or if 'auto' the path is automatically generated.
@@ -71,6 +71,6 @@ pub struct EvalArgs {
     pub out: Option<String>,
     /// The end date to use.
     pub end: String,
-    /// The ticker to use.
-    pub tickers: Vec<String>,
+    /// The symbols to use.
+    pub symbols: Vec<String>,
 }

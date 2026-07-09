@@ -142,10 +142,22 @@ pub async fn client(paper: bool) -> Client {
 }
 
 /// Builds a client contract for the IBKR API.
-pub fn contract(ticker: &str) -> Contract {
-    Contract::stock(ticker)
-        .in_currency("USD")
-        .on_exchange("SMART")
+pub fn contract(symbol: &str) -> Contract {
+    let parts = symbol.splitn(3, ':').collect::<Vec<_>>();
+
+    assert_eq!(
+        parts.len(),
+        3,
+        "Invalid symbol format '{symbol}'. Please use <EXCHANGE>:<SYMBOL>:<CURRENCY>"
+    );
+
+    if parts[0] == "IDEALPRO" {
+        return Contract::forex(parts[1], parts[2]).build();
+    }
+
+    Contract::stock(parts[1])
+        .on_exchange(parts[0])
+        .in_currency(parts[2])
         .build()
 }
 

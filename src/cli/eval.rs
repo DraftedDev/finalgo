@@ -17,20 +17,20 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
     let mut t = utils::subtract_naive_date(end, shift);
 
     tracing::info!(
-        "Collecting {} samples of {} tickers each...",
+        "Collecting {} samples of {} symbols each...",
         args.samples,
-        args.tickers.len()
+        args.symbols.len()
     );
 
-    let mut data = Vec::with_capacity(args.samples * args.tickers.len());
+    let mut data = Vec::with_capacity(args.samples * args.symbols.len());
 
     let first_t = t;
 
     for _ in 0..args.samples {
         let target_end = utils::add_naive_date(t, TARGET_HORIZON);
 
-        for ticker in &args.tickers {
-            data.push((t, target_end, ticker.clone()));
+        for symbol in &args.symbols {
+            data.push((t, target_end, symbol.clone()));
         }
 
         t = utils::add_naive_date(t, 1);
@@ -44,11 +44,11 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
     let client = Arc::new(utils::client(cli.paper).await);
 
     tracing::info!("Pre-fetching data into cache...");
-    for ticker in &args.tickers {
+    for symbol in &args.symbols {
         cache
             .fetch_range(
                 &client,
-                ticker.clone(),
+                symbol.clone(),
                 utils::format_naive_date(absolute_start),
                 utils::format_naive_date(absolute_end),
             )
@@ -59,11 +59,11 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
 
     let mut grouped_data: FastMap<String, Vec<(StockData, StockData)>> = FastMap::default();
 
-    for ticker in &args.tickers {
-        grouped_data.insert(ticker.clone(), Vec::with_capacity(args.samples));
+    for symbol in &args.symbols {
+        grouped_data.insert(symbol.clone(), Vec::with_capacity(args.samples));
     }
 
-    let tickers = args.tickers.clone();
+    let symbols = args.symbols.clone();
 
     if let Some(path) = args.out.as_mut()
         && path.as_str() == "auto"
@@ -73,12 +73,12 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
 
     let fetched = utils::with_progress("Collecting", data.len() as u64, |span| {
         for chunk in data.chunks(FETCH_CHUNK_SIZE) {
-            for (t, t_target, ticker) in chunk.iter().cloned() {
+            for (t, t_target, symbol) in chunk.iter().cloned() {
                 let predict = cache
                     .get_stock_data(&DataKey {
                         end: utils::format_naive_date(t),
                         size: CANDLE_LOOK_BACK,
-                        ticker: ticker.clone(),
+                        symbol: symbol.clone(),
                     })
                     .expect("Invalid cache state");
 
@@ -86,7 +86,7 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
                     .get_stock_data(&DataKey {
                         end: utils::format_naive_date(t_target),
                         size: TARGET_HORIZON,
-                        ticker: ticker.clone(),
+                        symbol: symbol.clone(),
                     })
                     .expect("Invalid cache state");
 
@@ -98,13 +98,13 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
                 span.pb_inc(1);
 
                 grouped_data
-                    .get_mut(&ticker)
+                    .get_mut(&symbol)
                     .unwrap()
                     .push((predict, target));
             }
         }
 
-        tickers
+        symbols
             .iter()
             .map(|t| (t.clone(), grouped_data.remove(t).unwrap()))
             .collect::<Vec<(String, Vec<(StockData, StockData)>)>>()
@@ -120,15 +120,15 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
             let out = serde_json::to_string_pretty(&result).expect("Failed to serialize output");
 
             std::fs::write(path, out).expect("Failed to write output");
-        } else {
-            let out = result
-                .into_iter()
-                .map(|r| r.to_string())
-                .collect::<Vec<_>>()
-                .join("\n");
-
-            tracing::info!("[######################### RANK #########################]\n{out}");
         }
+
+        let out = result
+            .into_iter()
+            .map(|r| r.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        tracing::info!("[######################### RANK #########################]\n{out}");
     } else {
         let data = fetched
             .into_iter()

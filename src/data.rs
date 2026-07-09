@@ -34,7 +34,7 @@ impl StockData {
         let mut retries = 0;
 
         let bars = loop {
-            let contract = utils::contract(&key.ticker);
+            let contract = utils::contract(&key.symbol);
 
             let res = client
                 .historical_data(&contract, BarSize::Day)
@@ -59,7 +59,7 @@ impl StockData {
         };
 
         if bars.is_empty() {
-            panic!("IBKR returned 0 bars for {}.", key.ticker);
+            panic!("IBKR returned 0 bars for {}.", key.symbol);
         }
 
         let last_bar = bars.last().unwrap();
@@ -79,7 +79,7 @@ impl StockData {
         if bar_date_str != key.end {
             panic!(
                 "Date mismatch for {}: requested {}, but latest candle is from {}.",
-                key.ticker, key.end, bar_date_str
+                key.symbol, key.end, bar_date_str
             );
         }
 
@@ -103,7 +103,7 @@ impl StockData {
 pub struct DataKey {
     pub size: usize,
     pub end: String,
-    pub ticker: String,
+    pub symbol: String,
 }
 
 /// Cache that fetches bulk data and slices it in memory to avoid API rate limits.
@@ -118,11 +118,11 @@ impl DataCache {
         }
     }
 
-    /// Fetches the entire date range for a ticker in a single API call and caches it.
+    /// Fetches the entire date range for a symbol in a single API call and caches it.
     pub async fn fetch_range(
         &mut self,
         client: &Client,
-        ticker: String,
+        symbol: String,
         start: String,
         end: String,
     ) {
@@ -146,7 +146,7 @@ impl DataCache {
         let mut current_end = end_time_date.with_hms(23, 59, 59).unwrap().assume_utc();
         let start_time = start_time_date.with_hms(0, 0, 0).unwrap().assume_utc();
 
-        let contract = utils::contract(&ticker);
+        let contract = utils::contract(&symbol);
 
         // Collect chunks in a separate vector to preserve chronological order
         let mut chunks = Vec::new();
@@ -167,13 +167,13 @@ impl DataCache {
                     Ok(data) => break data.bars,
                     Err(e) => {
                         if chunk_retries < FETCH_RETRIES {
-                            tracing::warn!("IBKR chunk fetch failed for {}: {e}", ticker);
+                            tracing::warn!("IBKR chunk fetch failed for {}: {e}", symbol);
                             chunk_retries += 1;
                             tokio::time::sleep(Duration::from_secs(15)).await;
                         } else {
                             panic!(
                                 "Failed to fetch chunk from IBKR for {} after max retries: {e}",
-                                ticker
+                                symbol
                             );
                         }
                     }
@@ -211,13 +211,13 @@ impl DataCache {
             all_bars.extend(chunk);
         }
 
-        tracing::info!("Cached {} bars for {}", all_bars.len(), ticker);
-        self.bars.insert(ticker, all_bars);
+        tracing::info!("Cached {} bars for {}", all_bars.len(), symbol);
+        self.bars.insert(symbol, all_bars);
     }
 
     /// Slices the cached bars in memory to match the exact [DataKey] window.
     pub fn get_stock_data(&self, key: &DataKey) -> Option<StockData> {
-        let bars = self.bars.get(&key.ticker)?;
+        let bars = self.bars.get(&key.symbol)?;
         let end_date = utils::parse_naive_date(&key.end);
 
         let end_date_time = time::Date::from_calendar_date(

@@ -25,6 +25,8 @@ It's written in Rust and uses the Alpaca Finance API for fetching market data fo
 
 The project itself is a binary and contains a CLI with different commands.
 
+Symbols must be provided in the syntax: `EXCHANGE:TICKER:CURRENCY` (e.g. `SMART:GDX:USD`).
+
 Since FinalGo uses the [Interactive Brokers](https://www.interactivebrokers.com/) API, an IBKR account is required.
 Users should also install the [IB Gateway](https://www.interactivebrokers.com/en/trading/ibgateway-latest.php) Companion
 App, log in and let it run in the background.
@@ -54,7 +56,7 @@ Options:
 
 #### `finalyst run`
 
-Runs the interface on the given target date and ticker.
+Runs the interface on the given target date and symbol.
 
 The stock symbol must have data from `TARGET - CANDLE_LOOK_BACK (110 candles)` to `TARGET`.
 
@@ -63,11 +65,11 @@ Predicted output is valid for `TARGET + HORIZON (5 trading days)`.
 ```
 Run the interface
 
-Usage: finalgo run <TARGET> <TICKER>
+Usage: finalgo run <TARGET> <SYMBOL>
 
 Arguments:
   <TARGET>  The target date to predict for
-  <TICKER>  The ticker to use
+  <SYMBOL>  The symbol to use
 ```
 
 ---
@@ -76,7 +78,7 @@ Arguments:
 
 Runs the interface and outputs trade results.
 
-Uses a data file generated via ranked evaluation (`finalgo eval -r`) to select tickers.
+Uses a data file generated via ranked evaluation (`finalgo eval -r`) to select symbols.
 
 The stock symbols inside the data file must have data from `TARGET - CANDLE_LOOK_BACK (150 candles)` to `TARGET`.
 
@@ -100,23 +102,23 @@ Options:
 
 #### `finalyst eval`
 
-Evaluates the algorithm on given tickers and outputs results of various metrics.
+Evaluates the algorithm on given symbols and outputs results of various metrics.
 
 The stock symbols must have data from `(TARGET - CANDLE_LOOK_BACK (150 candles)) * samples` to `TARGET`.
 
 ```
 Evaluate the algorithm with test data
 
-Usage: finalgo eval [OPTIONS] <END> [TICKERS]...
+Usage: finalgo eval [OPTIONS] <END> [SYMBOLS]...
 
 Arguments:
   <END>         The end date to use
-  [TICKERS]...  The ticker to use
+  [SYMBOLS]...  The symbol to use
 
 Options:
   -s, --stats              Should the evaluator include statistics for every registered score
   -c, --samples <SAMPLES>  The sample count to use [default: 250]
-  -r, --rank               Should the evaluator rank the tickers
+  -r, --rank               Should the evaluator rank the symbols
   -o, --out <OUT>          If set, the JSON output will be written to the given path or if 'auto' the path is automatically generated
 ```
 

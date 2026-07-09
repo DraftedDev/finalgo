@@ -102,13 +102,13 @@ impl Evaluator {
         })
     }
 
-    /// Ranks the tickers based on the computed metrics.
+    /// Ranks the symbols based on the computed metrics.
     ///
     /// Returns a sorted vector of [EvalRank] instances.
     pub fn rank(&self, samples: Vec<(String, Vec<(StockData, StockData)>)>) -> Vec<EvalRank> {
         let mut results = samples
             .into_iter()
-            .map(|(ticker, data)| {
+            .map(|(symbol, data)| {
                 let total_trades = data.len() as f64;
 
                 let eval = self.eval(data);
@@ -122,7 +122,7 @@ impl Evaluator {
 
                 EvalRank {
                     rank: 0,
-                    ticker,
+                    symbol,
                     alpha_score,
                     profit_factor,
                     trades_taken: (trades_taken / total_trades) * 100.0,
@@ -155,13 +155,13 @@ impl Evaluator {
     }
 }
 
-/// The evaluation rank of a ticker run.
+/// The evaluation rank of a symbol run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvalRank {
-    /// The rank of the ticker in the ranking list.
+    /// The rank of the symbol in the ranking list.
     pub rank: usize,
-    /// The ticker symbol.
-    pub ticker: String,
+    /// The symbol.
+    pub symbol: String,
     /// The alpha score computed by the [ProfitLossMetric].
     pub alpha_score: f64,
     /// The profit factor computed by the [ProfitLossMetric].
@@ -178,7 +178,7 @@ pub struct EvalRank {
 
 impl Display for EvalRank {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "   {}: '{}'", self.rank, self.ticker)?;
+        writeln!(f, "   {}: '{}'", self.rank, self.symbol)?;
         writeln!(
             f,
             "      Alpha Score: {}",

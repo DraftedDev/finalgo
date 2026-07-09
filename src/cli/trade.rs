@@ -7,7 +7,7 @@ use crate::{engine, math, utils};
 use ibapi::orders::{Action, Order};
 use std::fmt::{Display, Formatter};
 
-/// The minimum alpha score required for a ticker to be considered for trading.
+/// The minimum alpha score required for a symbol to be considered for trading.
 const MIN_ALPHA_SCORE: f64 = 5.0;
 
 /// Trade with the interface.
@@ -28,24 +28,24 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
         serde_json::from_slice(&std::fs::read(&path).expect("Failed to read data file"))
             .expect("Failed to parse data file");
 
-    let tickers = data
+    let symbols = data
         .into_iter()
         .filter(|f| f.alpha_score >= MIN_ALPHA_SCORE)
         .collect::<Vec<_>>();
 
-    let mut trades = Vec::with_capacity(tickers.len());
+    let mut trades = Vec::with_capacity(symbols.len());
 
     let client = utils::client(cli.paper).await;
 
-    for rank in tickers {
-        tracing::info!("Computing trade for '{}'...", rank.ticker);
+    for rank in symbols {
+        tracing::info!("Computing trade for '{}'...", rank.symbol);
 
         let data = StockData::fetch(
             &client,
             &DataKey {
                 end: args.target.clone(),
                 size: CANDLE_LOOK_BACK,
-                ticker: rank.ticker.clone(),
+                symbol: rank.symbol.clone(),
             },
         )
         .await;
@@ -91,7 +91,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
         }
 
         trades.push(Trade {
-            ticker: rank.ticker,
+            symbol: rank.symbol,
             decision,
             target_end: target_end.clone(),
             entry_price: math::round_to(entry_price, 2),
@@ -111,7 +111,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
     if utils::prompt_confirm("Proceed with trades?") {
         for trade in trades {
             if trade.decision == Decision::Neutral {
-                tracing::info!("Skipping NEUTRAL decision for '{}'.", trade.ticker);
+                tracing::info!("Skipping NEUTRAL decision for '{}'.", trade.symbol);
                 continue;
             }
 
@@ -123,9 +123,9 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 continue;
             }
 
-            tracing::info!("Executing Bracket Order for '{}'...", trade.ticker);
+            tracing::info!("Executing Bracket Order for '{}'...", trade.symbol);
 
-            let contract = utils::contract(&trade.ticker);
+            let contract = utils::contract(&trade.symbol);
 
             let parent_id = client.next_order_id();
             let tp_id = client.next_order_id();
@@ -182,7 +182,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 .await
                 .expect("Failed to place SL");
 
-            tracing::info!("Bracket order for '{}' sent to socket!", trade.ticker);
+            tracing::info!("Bracket order for '{}' sent to socket!", trade.symbol);
         }
 
         // FIX: Keep the connection alive to let IB Gateway process the orders!
@@ -196,7 +196,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
 
 #[derive(Debug)]
 struct Trade {
-    ticker: String,
+    symbol: String,
     decision: Decision,
     target_end: String,
     entry_price: f64,
@@ -208,7 +208,7 @@ struct Trade {
 
 impl Display for Trade {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "   Ticker: '{}'", self.ticker)?;
+        writeln!(f, "   Symbol: '{}'", self.symbol)?;
         writeln!(f, "      Decision: {}", self.decision)?;
         writeln!(f, "      Target End: {}", self.target_end)?;
         writeln!(

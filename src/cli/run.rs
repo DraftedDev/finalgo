@@ -18,7 +18,7 @@ pub async fn run(cli: Cli, args: RunArgs) {
         &DataKey {
             end: args.target.clone(),
             size: CANDLE_LOOK_BACK,
-            ticker: args.ticker.clone(),
+            symbol: args.symbol.clone(),
         },
     )
     .await;
@@ -33,7 +33,7 @@ pub async fn run(cli: Cli, args: RunArgs) {
     let last_idx = data.closes.len() - 1;
 
     tracing::info!("[######################### TRADE #########################]");
-    tracing::info!("Ticker: {}", args.ticker);
+    tracing::info!("Symbol: {}", args.symbol);
     tracing::info!("Confidence: {}", math::round_to(score.confidence, 2));
     tracing::info!("Score: {}", math::round_to(score.score, 2));
     tracing::info!("Decision: {}", score.decision);
