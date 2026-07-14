@@ -4,7 +4,8 @@ use crate::data::{DataKey, StockData};
 use crate::eval::EvalRank;
 use crate::score::final_score::{Decision, FinalScore};
 use crate::{engine, math, utils};
-use ibapi::orders::{Action, Order};
+use chrono::Utc;
+use ibapi::orders::{Action, OcaType, Order, TimeInForce};
 use std::fmt::{Display, Formatter};
 
 /// The minimum alpha score required for a symbol to be considered for trading.
@@ -123,13 +124,14 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 continue;
             }
 
-            tracing::info!("Executing Bracket Order for '{}'...", trade.symbol);
+            tracing::info!("Executing Order for '{}'...", trade.symbol);
 
             let contract = utils::contract(&trade.symbol);
 
-            let parent_id = client.next_order_id();
-            let tp_id = client.next_order_id();
-            let sl_id = client.next_order_id();
+            let parent_id = client.next_valid_order_id().await.unwrap();
+            let tp_id = parent_id + 1;
+            let sl_id = parent_id + 2;
+            let time_exit_id = parent_id + 3;
 
             let (entry_action, exit_action) = if trade.decision == Decision::Long {
                 (Action::Buy, Action::Sell)
@@ -137,12 +139,17 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 (Action::Sell, Action::Buy)
             };
 
+            let today = Utc::now().date_naive();
+            let target_date = utils::add_naive_date(today, TARGET_HORIZON);
+            let gat_string = format!("{} 15:50:00 US/Eastern", target_date.format("%Y%m%d"));
+
+            let oca_group = format!("OCA_{}", parent_id);
+
             let parent = Order {
                 order_id: parent_id,
                 action: entry_action,
                 total_quantity: quantity,
-                order_type: "LMT".to_string(),
-                limit_price: Some(trade.entry_price),
+                order_type: "MKT".to_string(),
                 transmit: false,
                 ..Default::default()
             };
@@ -154,6 +161,8 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 order_type: "LMT".to_string(),
                 limit_price: Some(trade.take_profit),
                 parent_id,
+                oca_group: oca_group.clone(),
+                oca_type: OcaType::CancelWithBlock,
                 transmit: false,
                 ..Default::default()
             };
@@ -165,6 +174,22 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 order_type: "STP".to_string(),
                 aux_price: Some(trade.stop_loss),
                 parent_id,
+                oca_group: oca_group.clone(),
+                oca_type: OcaType::CancelWithBlock,
+                transmit: false,
+                ..Default::default()
+            };
+
+            let time_exit = Order {
+                order_id: time_exit_id,
+                action: exit_action,
+                total_quantity: quantity,
+                order_type: "MKT".to_string(),
+                parent_id,
+                oca_group: oca_group.clone(),
+                oca_type: OcaType::CancelWithBlock,
+                tif: TimeInForce::GoodTilCanceled,
+                good_after_time: gat_string,
                 transmit: true,
                 ..Default::default()
             };
@@ -181,14 +206,20 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 .submit_order(sl_id, &contract, &stop_loss)
                 .await
                 .expect("Failed to place SL");
+            client
+                .submit_order(time_exit_id, &contract, &time_exit)
+                .await
+                .expect("Failed to place Time Exit");
 
-            tracing::info!("Bracket order for '{}' sent to socket!", trade.symbol);
+            tracing::info!("Orders for '{}' placed successfully.", trade.symbol);
         }
 
-        // FIX: Keep the connection alive to let IB Gateway process the orders!
-        tracing::info!("Waiting for IBKR to acknowledge and assemble the brackets...");
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        tracing::info!("Orders successfully submitted to IBKR. You can now check TWS/IB Gateway.");
+        tracing::info!(
+            "Orders successfully submitted to IBKR. Keeping connection alive for 5 seconds to allow processing..."
+        );
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+        tracing::info!("Execution complete.");
     } else {
         tracing::info!("Aborting trades...");
     }
