@@ -161,6 +161,32 @@ pub fn contract(symbol: &str) -> Contract {
         .build()
 }
 
+pub async fn validate_symbols(client: &Client, symbols: &[String]) -> Result<(), String> {
+    let mut invalid_symbols = Vec::new();
+
+    for symbol_str in symbols {
+        let contract = contract(symbol_str);
+
+        match client.contract_details(&contract).await {
+            Ok(details) => {
+                if details.is_empty() {
+                    invalid_symbols.push(symbol_str.clone());
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to build contract for '{symbol_str}': {e}");
+                invalid_symbols.push(symbol_str.clone());
+            }
+        }
+    }
+
+    if invalid_symbols.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("Found invalid symbols: {invalid_symbols:?}"))
+    }
+}
+
 /// A [FastMap] of [Value]s.
 ///
 /// Used for communications between scores and the metrics system.

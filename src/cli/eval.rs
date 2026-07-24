@@ -8,6 +8,13 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 /// Evaluates the finalgo algorithm with given arguments.
 pub async fn eval(cli: Cli, mut args: EvalArgs) {
+    let client = Arc::new(utils::client(cli.paper).await);
+
+    tracing::info!("Validating symbols...");
+    utils::validate_symbols(&client, &args.symbols)
+        .await
+        .expect("Failed to validate symbols");
+
     let end = utils::parse_naive_date(&args.end);
 
     let shift = args
@@ -41,7 +48,6 @@ pub async fn eval(cli: Cli, mut args: EvalArgs) {
     let absolute_end = end;
 
     let mut cache = DataCache::new();
-    let client = Arc::new(utils::client(cli.paper).await);
 
     tracing::info!("Pre-fetching data into cache...");
     for symbol in &args.symbols {
