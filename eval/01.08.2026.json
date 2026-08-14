@@ -1,0 +1,1492 @@
+[
+  {
+    "rank": 1,
+    "symbol": "SMART:LI:USD",
+    "alpha_score": 52.083324598242505,
+    "profit_factor": 2.2991305666542408,
+    "trades_taken": 38.4,
+    "win_rate": 57.291666666666664,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 2,
+    "symbol": "SMART:KGC:USD",
+    "alpha_score": 31.079343646632715,
+    "profit_factor": 1.7035141699994636,
+    "trades_taken": 64.4,
+    "win_rate": 65.21739130434783,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 3,
+    "symbol": "SMART:VTRS:USD",
+    "alpha_score": 28.913664275768433,
+    "profit_factor": 1.8699966441652967,
+    "trades_taken": 65.2,
+    "win_rate": 56.44171779141104,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 4,
+    "symbol": "SMART:WBD:USD",
+    "alpha_score": 28.257212627670658,
+    "profit_factor": 1.8412017986924385,
+    "trades_taken": 57.199999999999996,
+    "win_rate": 55.94405594405595,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 5,
+    "symbol": "SMART:LYFT:USD",
+    "alpha_score": 23.930424784617035,
+    "profit_factor": 2.232108548189022,
+    "trades_taken": 19.2,
+    "win_rate": 58.333333333333336,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 6,
+    "symbol": "SMART:AA:USD",
+    "alpha_score": 16.344330183961425,
+    "profit_factor": 1.4672768419046045,
+    "trades_taken": 87.6,
+    "win_rate": 55.70776255707762,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 7,
+    "symbol": "SMART:AU:USD",
+    "alpha_score": 15.950876622650235,
+    "profit_factor": 1.4896905460861307,
+    "trades_taken": 72.8,
+    "win_rate": 59.34065934065934,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 8,
+    "symbol": "SMART:SM:USD",
+    "alpha_score": 11.108889693551923,
+    "profit_factor": 1.8503391994584828,
+    "trades_taken": 22.0,
+    "win_rate": 56.36363636363636,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 9,
+    "symbol": "SMART:HOOD:USD",
+    "alpha_score": 10.517710367548641,
+    "profit_factor": 1.7767618497954796,
+    "trades_taken": 21.2,
+    "win_rate": 58.490566037735846,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 10,
+    "symbol": "SMART:GM:USD",
+    "alpha_score": 8.50419152079838,
+    "profit_factor": 1.5309720535846938,
+    "trades_taken": 65.60000000000001,
+    "win_rate": 51.829268292682926,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 11,
+    "symbol": "SMART:PR:USD",
+    "alpha_score": 8.392705561083263,
+    "profit_factor": 1.5469295537226382,
+    "trades_taken": 52.800000000000004,
+    "win_rate": 62.878787878787875,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 12,
+    "symbol": "SMART:PLTR:USD",
+    "alpha_score": 6.344869758918231,
+    "profit_factor": 1.6309449275516446,
+    "trades_taken": 18.4,
+    "win_rate": 63.04347826086957,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 13,
+    "symbol": "SMART:MT:USD",
+    "alpha_score": 5.661271942330406,
+    "profit_factor": 1.3682137654770743,
+    "trades_taken": 88.4,
+    "win_rate": 55.65610859728507,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 14,
+    "symbol": "SMART:GFI:USD",
+    "alpha_score": 5.507967869892392,
+    "profit_factor": 1.349527035632605,
+    "trades_taken": 63.2,
+    "win_rate": 60.75949367088608,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 15,
+    "symbol": "SMART:VALE:USD",
+    "alpha_score": 3.826280414091795,
+    "profit_factor": 1.3890682724258607,
+    "trades_taken": 69.6,
+    "win_rate": 56.32183908045977,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 16,
+    "symbol": "SMART:ROKU:USD",
+    "alpha_score": 3.7710083484201196,
+    "profit_factor": 1.338102335596228,
+    "trades_taken": 77.60000000000001,
+    "win_rate": 52.0618556701031,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 17,
+    "symbol": "SMART:RIO:USD",
+    "alpha_score": 3.6389136566809115,
+    "profit_factor": 1.3622406500292372,
+    "trades_taken": 82.8,
+    "win_rate": 63.28502415458937,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 18,
+    "symbol": "SMART:HAL:USD",
+    "alpha_score": 2.816948808358734,
+    "profit_factor": 1.3098435415075262,
+    "trades_taken": 79.60000000000001,
+    "win_rate": 52.26130653266332,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 19,
+    "symbol": "SMART:PAAS:USD",
+    "alpha_score": 2.575934583260684,
+    "profit_factor": 1.276004270916638,
+    "trades_taken": 60.8,
+    "win_rate": 55.92105263157895,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 20,
+    "symbol": "SMART:SIRI:USD",
+    "alpha_score": 2.3644913531898206,
+    "profit_factor": 1.3513843508438343,
+    "trades_taken": 53.6,
+    "win_rate": 48.507462686567166,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 21,
+    "symbol": "SMART:DIN:USD",
+    "alpha_score": 1.7173460169079102,
+    "profit_factor": 1.2575140912998366,
+    "trades_taken": 54.800000000000004,
+    "win_rate": 53.284671532846716,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 22,
+    "symbol": "SMART:FCX:USD",
+    "alpha_score": 1.6148169007739042,
+    "profit_factor": 1.245088533728914,
+    "trades_taken": 58.4,
+    "win_rate": 54.794520547945204,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 23,
+    "symbol": "SMART:KEY:USD",
+    "alpha_score": 1.3730178262169055,
+    "profit_factor": 1.3197886057990151,
+    "trades_taken": 54.0,
+    "win_rate": 49.629629629629626,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 24,
+    "symbol": "SMART:MET:USD",
+    "alpha_score": 1.084123903135496,
+    "profit_factor": 1.3523953569033076,
+    "trades_taken": 36.4,
+    "win_rate": 57.14285714285714,
+    "longs_enabled": true,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 25,
+    "symbol": "SMART:HXL:USD",
+    "alpha_score": 0.8939089203384637,
+    "profit_factor": 1.1977893118012817,
+    "trades_taken": 96.0,
+    "win_rate": 52.083333333333336,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 26,
+    "symbol": "SMART:PYPL:USD",
+    "alpha_score": 0.8557219113007734,
+    "profit_factor": 1.337347362894736,
+    "trades_taken": 27.200000000000003,
+    "win_rate": 51.470588235294116,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 27,
+    "symbol": "SMART:APA:USD",
+    "alpha_score": 0.5120894284881722,
+    "profit_factor": 1.1618074858551088,
+    "trades_taken": 72.39999999999999,
+    "win_rate": 54.69613259668509,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 28,
+    "symbol": "SMART:CFG:USD",
+    "alpha_score": 0.31124295031798155,
+    "profit_factor": 1.1647590591722892,
+    "trades_taken": 73.2,
+    "win_rate": 50.27322404371585,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 29,
+    "symbol": "SMART:BHP:USD",
+    "alpha_score": 0.31059382944580916,
+    "profit_factor": 1.1399919388232318,
+    "trades_taken": 82.8,
+    "win_rate": 51.20772946859904,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 30,
+    "symbol": "SMART:DTE:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 6.650409982995646,
+    "trades_taken": 6.800000000000001,
+    "win_rate": 88.23529411764706,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 31,
+    "symbol": "SMART:CCJ:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 1.6257864062666776,
+    "trades_taken": 10.8,
+    "win_rate": 66.66666666666666,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 32,
+    "symbol": "SMART:EL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 1.4166386632940613,
+    "trades_taken": 12.0,
+    "win_rate": 53.333333333333336,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 33,
+    "symbol": "SMART:BNTX:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 1.3832617211687417,
+    "trades_taken": 14.000000000000002,
+    "win_rate": 48.57142857142857,
+    "longs_enabled": false,
+    "shorts_enabled": true
+  },
+  {
+    "rank": 34,
+    "symbol": "SMART:SOFI:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 1.0872359890773085,
+    "trades_taken": 63.6,
+    "win_rate": 54.71698113207547,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 35,
+    "symbol": "SMART:MTDR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 1.0851145523270218,
+    "trades_taken": 62.8,
+    "win_rate": 55.4140127388535,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 36,
+    "symbol": "SMART:CHRD:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 1.0224753055396925,
+    "trades_taken": 59.599999999999994,
+    "win_rate": 49.664429530201346,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 37,
+    "symbol": "SMART:AGI:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9808771670496318,
+    "trades_taken": 74.8,
+    "win_rate": 50.80213903743316,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 38,
+    "symbol": "SMART:DG:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9752880606573487,
+    "trades_taken": 58.4,
+    "win_rate": 46.57534246575342,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 39,
+    "symbol": "SMART:INTC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9545874075604661,
+    "trades_taken": 63.6,
+    "win_rate": 47.16981132075472,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 40,
+    "symbol": "SMART:TPR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9438581785668444,
+    "trades_taken": 87.2,
+    "win_rate": 51.8348623853211,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 41,
+    "symbol": "SMART:TECK:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.924798276793529,
+    "trades_taken": 74.4,
+    "win_rate": 51.61290322580645,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 42,
+    "symbol": "SMART:AFL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9194416875757488,
+    "trades_taken": 68.0,
+    "win_rate": 48.8235294117647,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 43,
+    "symbol": "SMART:CHWY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9181010511035406,
+    "trades_taken": 40.0,
+    "win_rate": 51.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 44,
+    "symbol": "SMART:DVN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9152950385144519,
+    "trades_taken": 65.2,
+    "win_rate": 49.693251533742334,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 45,
+    "symbol": "SMART:CVS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.9009216778303892,
+    "trades_taken": 58.8,
+    "win_rate": 48.97959183673469,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 46,
+    "symbol": "SMART:W:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8971588287435486,
+    "trades_taken": 70.0,
+    "win_rate": 49.142857142857146,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 47,
+    "symbol": "SMART:CNX:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8794034799250203,
+    "trades_taken": 61.199999999999996,
+    "win_rate": 43.790849673202615,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 48,
+    "symbol": "SMART:KMB:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8770823994726084,
+    "trades_taken": 38.800000000000004,
+    "win_rate": 45.36082474226804,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 49,
+    "symbol": "SMART:MRNA:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8729763647713186,
+    "trades_taken": 47.199999999999996,
+    "win_rate": 39.83050847457627,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 50,
+    "symbol": "SMART:DLTR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.870261406319854,
+    "trades_taken": 72.39999999999999,
+    "win_rate": 45.85635359116022,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 51,
+    "symbol": "SMART:ZION:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8642206154064492,
+    "trades_taken": 63.2,
+    "win_rate": 46.835443037974684,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 52,
+    "symbol": "SMART:ETSY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8586796468736065,
+    "trades_taken": 54.800000000000004,
+    "win_rate": 48.175182481751825,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 53,
+    "symbol": "SMART:FITB:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8585405221704158,
+    "trades_taken": 78.4,
+    "win_rate": 44.38775510204081,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 54,
+    "symbol": "SMART:AAP:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8567541458697411,
+    "trades_taken": 52.400000000000006,
+    "win_rate": 48.091603053435115,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 55,
+    "symbol": "SMART:AFRM:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8516304082638548,
+    "trades_taken": 50.0,
+    "win_rate": 40.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 56,
+    "symbol": "SMART:CLF:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8453240800350402,
+    "trades_taken": 62.8,
+    "win_rate": 45.85987261146497,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 57,
+    "symbol": "SMART:USB:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8244973191265553,
+    "trades_taken": 55.60000000000001,
+    "win_rate": 47.482014388489205,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 58,
+    "symbol": "SMART:JACK:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8226022442176143,
+    "trades_taken": 54.0,
+    "win_rate": 47.40740740740741,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 59,
+    "symbol": "SMART:OXY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.8005031552580324,
+    "trades_taken": 53.6,
+    "win_rate": 47.76119402985074,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 60,
+    "symbol": "SMART:MAT:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7982714751353397,
+    "trades_taken": 47.599999999999994,
+    "win_rate": 48.739495798319325,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 61,
+    "symbol": "SMART:RUN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.782183424808041,
+    "trades_taken": 52.0,
+    "win_rate": 43.84615384615385,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 62,
+    "symbol": "SMART:BAC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7728749394361248,
+    "trades_taken": 68.4,
+    "win_rate": 52.63157894736842,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 63,
+    "symbol": "SMART:UHS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7719134666540576,
+    "trades_taken": 60.0,
+    "win_rate": 48.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 64,
+    "symbol": "SMART:ETR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7705369892870645,
+    "trades_taken": 74.0,
+    "win_rate": 41.62162162162162,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 65,
+    "symbol": "SMART:TFC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7625465368718556,
+    "trades_taken": 64.0,
+    "win_rate": 47.5,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 66,
+    "symbol": "SMART:FSLR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7604587194707336,
+    "trades_taken": 69.6,
+    "win_rate": 45.40229885057471,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 67,
+    "symbol": "SMART:CMCSA:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7596490195956734,
+    "trades_taken": 60.4,
+    "win_rate": 48.34437086092716,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 68,
+    "symbol": "SMART:AAL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7559723991710858,
+    "trades_taken": 72.0,
+    "win_rate": 43.333333333333336,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 69,
+    "symbol": "SMART:UPST:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7509431128845785,
+    "trades_taken": 51.2,
+    "win_rate": 47.65625,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 70,
+    "symbol": "SMART:THC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7452433074541706,
+    "trades_taken": 61.199999999999996,
+    "win_rate": 45.751633986928105,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 71,
+    "symbol": "SMART:RL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7229235387522387,
+    "trades_taken": 80.0,
+    "win_rate": 41.5,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 72,
+    "symbol": "SMART:PRGO:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7195405424236899,
+    "trades_taken": 33.2,
+    "win_rate": 43.373493975903614,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 73,
+    "symbol": "SMART:UAL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7108891731485604,
+    "trades_taken": 66.8,
+    "win_rate": 43.11377245508982,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 74,
+    "symbol": "SMART:WFC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7071597354422531,
+    "trades_taken": 60.4,
+    "win_rate": 43.04635761589404,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 75,
+    "symbol": "SMART:C:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7014360777019769,
+    "trades_taken": 84.39999999999999,
+    "win_rate": 46.91943127962085,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 76,
+    "symbol": "SMART:SYF:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.7005054432833135,
+    "trades_taken": 59.199999999999996,
+    "win_rate": 42.567567567567565,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 77,
+    "symbol": "SMART:PKX:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6979552040531911,
+    "trades_taken": 64.8,
+    "win_rate": 41.9753086419753,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 78,
+    "symbol": "SMART:ONON:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6975049032053615,
+    "trades_taken": 51.2,
+    "win_rate": 38.28125,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 79,
+    "symbol": "SMART:NCLH:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6942452395589626,
+    "trades_taken": 61.199999999999996,
+    "win_rate": 42.48366013071895,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 80,
+    "symbol": "SMART:PVH:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6906935436276148,
+    "trades_taken": 61.6,
+    "win_rate": 41.55844155844156,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 81,
+    "symbol": "SMART:XRAY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6898587868852755,
+    "trades_taken": 49.2,
+    "win_rate": 44.71544715447154,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 82,
+    "symbol": "SMART:LEU:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6876682074288396,
+    "trades_taken": 53.6,
+    "win_rate": 43.28358208955223,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 83,
+    "symbol": "SMART:STLA:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6862337164760796,
+    "trades_taken": 51.6,
+    "win_rate": 44.18604651162791,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 84,
+    "symbol": "SMART:BBY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6837669971087028,
+    "trades_taken": 57.599999999999994,
+    "win_rate": 47.22222222222222,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 85,
+    "symbol": "SMART:LUV:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6764178142554064,
+    "trades_taken": 68.8,
+    "win_rate": 36.04651162790697,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 86,
+    "symbol": "SMART:JBLU:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6742842323316453,
+    "trades_taken": 70.39999999999999,
+    "win_rate": 36.93181818181818,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 87,
+    "symbol": "SMART:NIO:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6739369551405188,
+    "trades_taken": 67.2,
+    "win_rate": 43.452380952380956,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 88,
+    "symbol": "SMART:RF:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6719649034396782,
+    "trades_taken": 58.4,
+    "win_rate": 39.726027397260275,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 89,
+    "symbol": "SMART:CHTR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6696269669793025,
+    "trades_taken": 48.8,
+    "win_rate": 51.63934426229508,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 90,
+    "symbol": "SMART:RIVN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6684342587917785,
+    "trades_taken": 57.99999999999999,
+    "win_rate": 40.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 91,
+    "symbol": "SMART:FOX:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6554423797667063,
+    "trades_taken": 62.4,
+    "win_rate": 48.717948717948715,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 92,
+    "symbol": "SMART:DAL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6553054943254493,
+    "trades_taken": 80.0,
+    "win_rate": 39.5,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 93,
+    "symbol": "SMART:PRU:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6550023187993954,
+    "trades_taken": 47.599999999999994,
+    "win_rate": 46.21848739495798,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 94,
+    "symbol": "SMART:UNM:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6515667113126264,
+    "trades_taken": 48.0,
+    "win_rate": 39.166666666666664,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 95,
+    "symbol": "SMART:CROX:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6427022895423709,
+    "trades_taken": 50.8,
+    "win_rate": 35.43307086614173,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 96,
+    "symbol": "SMART:FOXA:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6366824405332678,
+    "trades_taken": 66.4,
+    "win_rate": 47.59036144578313,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 97,
+    "symbol": "SMART:LNC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6220869530123583,
+    "trades_taken": 65.60000000000001,
+    "win_rate": 45.73170731707317,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 98,
+    "symbol": "SMART:HBAN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6173560047458001,
+    "trades_taken": 52.0,
+    "win_rate": 33.07692307692307,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 99,
+    "symbol": "SMART:SID:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6127849470453094,
+    "trades_taken": 55.60000000000001,
+    "win_rate": 39.568345323741006,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 100,
+    "symbol": "SMART:HAS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.609168595766165,
+    "trades_taken": 66.4,
+    "win_rate": 40.36144578313253,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 101,
+    "symbol": "SMART:ES:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.6079190050812984,
+    "trades_taken": 60.0,
+    "win_rate": 42.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 102,
+    "symbol": "SMART:F:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5854689243911768,
+    "trades_taken": 60.0,
+    "win_rate": 44.666666666666664,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 103,
+    "symbol": "SMART:CNP:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5704873899784098,
+    "trades_taken": 61.199999999999996,
+    "win_rate": 45.09803921568628,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 104,
+    "symbol": "SMART:SPOT:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5606767186204611,
+    "trades_taken": 43.6,
+    "win_rate": 40.36697247706422,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 105,
+    "symbol": "SMART:PFE:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5512862353886973,
+    "trades_taken": 54.0,
+    "win_rate": 42.22222222222222,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 106,
+    "symbol": "SMART:EVRG:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5480068778101932,
+    "trades_taken": 70.0,
+    "win_rate": 36.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 107,
+    "symbol": "SMART:DKNG:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5463484216817937,
+    "trades_taken": 47.599999999999994,
+    "win_rate": 41.17647058823529,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 108,
+    "symbol": "SMART:PINS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5451473153862008,
+    "trades_taken": 55.2,
+    "win_rate": 39.85507246376812,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 109,
+    "symbol": "SMART:ALLY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5383900694587004,
+    "trades_taken": 67.2,
+    "win_rate": 41.07142857142857,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 110,
+    "symbol": "SMART:CHD:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.537532832607161,
+    "trades_taken": 56.8,
+    "win_rate": 38.028169014084504,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 111,
+    "symbol": "SMART:XPEV:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5269511092120938,
+    "trades_taken": 47.199999999999996,
+    "win_rate": 40.67796610169492,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 112,
+    "symbol": "SMART:SNAP:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5211478480068046,
+    "trades_taken": 40.0,
+    "win_rate": 39.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 113,
+    "symbol": "SMART:CNC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5155172580692322,
+    "trades_taken": 52.800000000000004,
+    "win_rate": 44.696969696969695,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 114,
+    "symbol": "SMART:COF:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5026921652320749,
+    "trades_taken": 50.0,
+    "win_rate": 40.0,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 115,
+    "symbol": "SMART:RRC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5025040542542596,
+    "trades_taken": 57.199999999999996,
+    "win_rate": 40.55944055944056,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 116,
+    "symbol": "SMART:HSIC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.5011240695792937,
+    "trades_taken": 46.800000000000004,
+    "win_rate": 32.47863247863248,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 117,
+    "symbol": "SMART:DIS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.48091106983149284,
+    "trades_taken": 39.2,
+    "win_rate": 40.816326530612244,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 118,
+    "symbol": "SMART:AES:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.47145062574329344,
+    "trades_taken": 54.400000000000006,
+    "win_rate": 30.88235294117647,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 119,
+    "symbol": "SMART:MNRO:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.47096018332266226,
+    "trades_taken": 55.2,
+    "win_rate": 40.57971014492754,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 120,
+    "symbol": "SMART:HMY:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.4692138044182316,
+    "trades_taken": 67.60000000000001,
+    "win_rate": 40.828402366863905,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 121,
+    "symbol": "SMART:AR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.46535132779675714,
+    "trades_taken": 48.4,
+    "win_rate": 42.97520661157025,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 122,
+    "symbol": "SMART:BIRK:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.4625494511096717,
+    "trades_taken": 45.2,
+    "win_rate": 39.823008849557525,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 123,
+    "symbol": "SMART:NI:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.45859881744232,
+    "trades_taken": 74.8,
+    "win_rate": 41.17647058823529,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 124,
+    "symbol": "SMART:OGN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.440147102122549,
+    "trades_taken": 48.4,
+    "win_rate": 33.88429752066116,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 125,
+    "symbol": "SMART:GOLD:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.434886690325843,
+    "trades_taken": 38.800000000000004,
+    "win_rate": 31.958762886597935,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 126,
+    "symbol": "SMART:WEN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.4315009781233212,
+    "trades_taken": 48.0,
+    "win_rate": 40.833333333333336,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 127,
+    "symbol": "SMART:ALK:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.4208024073770864,
+    "trades_taken": 54.400000000000006,
+    "win_rate": 33.82352941176471,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 128,
+    "symbol": "SMART:PNW:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.4177804847888211,
+    "trades_taken": 57.599999999999994,
+    "win_rate": 40.27777777777778,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 129,
+    "symbol": "SMART:FE:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.40984007372362424,
+    "trades_taken": 69.19999999999999,
+    "win_rate": 36.99421965317919,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 130,
+    "symbol": "SMART:LB:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.40926416805095317,
+    "trades_taken": 52.800000000000004,
+    "win_rate": 34.84848484848485,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 131,
+    "symbol": "SMART:EQT:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.4030348499438685,
+    "trades_taken": 51.6,
+    "win_rate": 36.434108527131784,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 132,
+    "symbol": "SMART:PPL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3741486169976649,
+    "trades_taken": 58.4,
+    "win_rate": 33.56164383561644,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 133,
+    "symbol": "SMART:PZZA:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3739709269505284,
+    "trades_taken": 54.400000000000006,
+    "win_rate": 36.76470588235294,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 134,
+    "symbol": "SMART:NRG:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.36695057487088584,
+    "trades_taken": 52.400000000000006,
+    "win_rate": 39.69465648854962,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 135,
+    "symbol": "SMART:YUM:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3641839662776325,
+    "trades_taken": 57.599999999999994,
+    "win_rate": 37.5,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 136,
+    "symbol": "SMART:QSR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3633570320098615,
+    "trades_taken": 58.4,
+    "win_rate": 32.87671232876712,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 137,
+    "symbol": "SMART:SCHW:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3444697351784679,
+    "trades_taken": 51.6,
+    "win_rate": 37.98449612403101,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 138,
+    "symbol": "SMART:ENPH:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3430349218526393,
+    "trades_taken": 42.0,
+    "win_rate": 31.428571428571427,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 139,
+    "symbol": "SMART:KR:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3385143040636014,
+    "trades_taken": 54.0,
+    "win_rate": 30.37037037037037,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 140,
+    "symbol": "SMART:XEL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.33424188017791956,
+    "trades_taken": 64.0,
+    "win_rate": 28.749999999999996,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 141,
+    "symbol": "SMART:TLN:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.33107340743273717,
+    "trades_taken": 61.6,
+    "win_rate": 38.311688311688314,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 142,
+    "symbol": "SMART:EXC:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3252148762553447,
+    "trades_taken": 47.199999999999996,
+    "win_rate": 33.89830508474576,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 143,
+    "symbol": "SMART:VZ:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.32143833819781426,
+    "trades_taken": 32.4,
+    "win_rate": 32.098765432098766,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 144,
+    "symbol": "SMART:AIG:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.31380029217761213,
+    "trades_taken": 39.6,
+    "win_rate": 34.34343434343434,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 145,
+    "symbol": "SMART:CMS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.31061388073673224,
+    "trades_taken": 45.6,
+    "win_rate": 34.21052631578947,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 146,
+    "symbol": "SMART:CCL:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.3094844519900624,
+    "trades_taken": 57.99999999999999,
+    "win_rate": 33.10344827586207,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 147,
+    "symbol": "SMART:T:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.30266536169483044,
+    "trades_taken": 44.0,
+    "win_rate": 34.54545454545455,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 148,
+    "symbol": "SMART:GIS:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.291262161591964,
+    "trades_taken": 31.2,
+    "win_rate": 37.17948717948718,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  },
+  {
+    "rank": 149,
+    "symbol": "SMART:PEG:USD",
+    "alpha_score": 0.0,
+    "profit_factor": 0.12488523635280162,
+    "trades_taken": 41.6,
+    "win_rate": 20.192307692307693,
+    "longs_enabled": false,
+    "shorts_enabled": false
+  }
+]
