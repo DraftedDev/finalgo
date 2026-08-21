@@ -4,7 +4,6 @@ use crate::data::{DataKey, StockData};
 use crate::eval::EvalRank;
 use crate::score::final_score::{Decision, FinalScore};
 use crate::{engine, math, utils};
-use chrono::Utc;
 use ibapi::orders::{Action, OcaType, Order, TimeInForce};
 use std::fmt::{Display, Formatter};
 
@@ -13,9 +12,9 @@ const MIN_ALPHA_SCORE: f64 = 5.0;
 
 /// Trade with the interface.
 pub async fn trade(cli: Cli, args: TradeArgs) {
-    // Calculate end date of prediction TARGET + HORIZON
-    let target_end = utils::add_naive_date(utils::parse_naive_date(&args.target), TARGET_HORIZON);
-    let target_end = utils::format_naive_date(target_end);
+    let target_base_date = utils::parse_naive_date(&args.target);
+    let target_end_date = utils::add_naive_date(target_base_date, TARGET_HORIZON);
+    let target_end = utils::format_naive_date(target_end_date);
 
     let path = if args.data.as_str() == "auto" {
         find_latest_data()
@@ -58,7 +57,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
         let entry_price = data.closes.last().copied().unwrap_or(0.0);
 
         let exits = engine.indicator::<crate::indicator::exits::DynamicExits>();
-        let last_idx = data.closes.len() - 1;
+        let last_idx = data.closes.len().saturating_sub(1);
 
         let (decision, stop_loss, take_profit) =
             if rank.longs_enabled && score.decision == Decision::Long {
@@ -110,6 +109,8 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
     }
 
     if utils::prompt_confirm("Proceed with trades?") {
+        let mut current_id = client.next_valid_order_id().await.unwrap();
+
         for trade in trades {
             if trade.decision == Decision::Neutral {
                 tracing::info!("Skipping NEUTRAL decision for '{}'.", trade.symbol);
@@ -128,10 +129,17 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
 
             let contract = utils::contract(&trade.symbol);
 
-            let parent_id = client.next_valid_order_id().await.unwrap();
-            let tp_id = parent_id + 1;
-            let sl_id = parent_id + 2;
-            let time_exit_id = parent_id + 3;
+            let parent_id = current_id;
+            current_id += 1;
+
+            let tp_id = current_id;
+            current_id += 1;
+
+            let sl_id = current_id;
+            current_id += 1;
+
+            let time_exit_id = current_id;
+            current_id += 1;
 
             let (entry_action, exit_action) = if trade.decision == Decision::Long {
                 (Action::Buy, Action::Sell)
@@ -139,21 +147,21 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 (Action::Sell, Action::Buy)
             };
 
-            let today = Utc::now().date_naive();
-            let target_date = utils::add_naive_date(today, TARGET_HORIZON);
-            let gat_string = format!("{} 15:50:00 US/Eastern", target_date.format("%Y%m%d"));
+            let gat_string = format!("{} 15:50:00 US/Eastern", target_end_date.format("%Y%m%d"));
+            let oca_group = format!("OCA_{}_{}", trade.symbol, parent_id);
 
-            let oca_group = format!("OCA_{}", parent_id);
-
+            // Parent Entry Order
             let parent = Order {
                 order_id: parent_id,
                 action: entry_action,
                 total_quantity: quantity,
                 order_type: "MKT".to_string(),
+                tif: TimeInForce::GoodTilCanceled,
                 transmit: false,
                 ..Default::default()
             };
 
+            // Take Profit Child Order
             let take_profit = Order {
                 order_id: tp_id,
                 action: exit_action,
@@ -163,10 +171,12 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 parent_id,
                 oca_group: oca_group.clone(),
                 oca_type: OcaType::CancelWithBlock,
+                tif: TimeInForce::GoodTilCanceled,
                 transmit: false,
                 ..Default::default()
             };
 
+            // Stop Loss Child Order
             let stop_loss = Order {
                 order_id: sl_id,
                 action: exit_action,
@@ -176,10 +186,12 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 parent_id,
                 oca_group: oca_group.clone(),
                 oca_type: OcaType::CancelWithBlock,
+                tif: TimeInForce::GoodTilCanceled,
                 transmit: false,
                 ..Default::default()
             };
 
+            // Time Exit Child Order
             let time_exit = Order {
                 order_id: time_exit_id,
                 action: exit_action,
@@ -279,10 +291,8 @@ fn find_latest_data() -> String {
                 let file = entry.file_name();
                 let file = file.to_str().expect("Failed to get file name");
 
-                if file.ends_with(".json") {
-                    let date = file.trim().strip_suffix(".json").unwrap();
-
-                    Some(utils::parse_naive_date(date))
+                if let Some(date_str) = file.strip_suffix(".json") {
+                    Some(utils::parse_naive_date(date_str))
                 } else {
                     None
                 }

@@ -3,8 +3,11 @@ use crate::indicator::exits::DynamicExits;
 use crate::score::final_score::{Decision, FinalScore};
 use crate::utils::{Value, ValueMap};
 
-/// 50 basis points round-trip (25 bps entry + 25 bps exit).
-const FRICTION: f64 = 0.005;
+/// 100 Basis points round trip.
+const FRICTION: f64 = 0.01;
+
+/// Extra 20 bps penalty for live stop-loss slippage.
+const STOP_SLIPPAGE: f64 = 0.002;
 
 /// Scaling factor to make the Alpha Score human-readable.
 const ALPHA_SCALE: f64 = 3_000.0;
@@ -89,7 +92,7 @@ impl Metric for ProfitLossMetric {
                         }
 
                         if day_low <= actual_sl {
-                            trade_pnl = (actual_sl - entry) / entry - FRICTION;
+                            trade_pnl = (actual_sl - entry) / entry - FRICTION - STOP_SLIPPAGE;
                             exited = true;
                             break;
                         } else if day_high >= actual_tp {
@@ -114,7 +117,7 @@ impl Metric for ProfitLossMetric {
                         }
 
                         if day_high >= actual_sl {
-                            trade_pnl = (entry - actual_sl) / entry - FRICTION;
+                            trade_pnl = (entry - actual_sl) / entry - FRICTION - STOP_SLIPPAGE;
                             exited = true;
                             break;
                         } else if day_low <= actual_tp {
@@ -317,6 +320,14 @@ impl Metric for ProfitLossMetric {
             0.0
         };
 
+        let payoff_ratio = if avg_loss.abs() > 1e-9 {
+            avg_win / avg_loss.abs()
+        } else if wins > 0 {
+            99.99
+        } else {
+            0.0
+        };
+
         let expectancy = if trades_taken > 0 {
             total_return / trades_taken as f64
         } else {
@@ -363,6 +374,7 @@ impl Metric for ProfitLossMetric {
             .with("pnl_total_return", Value::Percent(total_return))
             .with("pnl_avg_win", Value::Percent(avg_win))
             .with("pnl_avg_loss", Value::Percent(avg_loss))
+            .with("pnl_payoff_ratio", Value::Float(payoff_ratio))
             .with("pnl_profit_factor", Value::Float(profit_factor))
             .with("pnl_expectancy", Value::Percent(expectancy))
             .with("pnl_sharpe", Value::Float(sharpe))

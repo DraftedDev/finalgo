@@ -115,6 +115,7 @@ impl Evaluator {
 
                 let alpha_score = eval.get("pnl_alpha_score").as_float().unwrap();
                 let trades_taken = eval.get("pnl_trades_taken").as_int().unwrap() as f64;
+                let payoff_ratio = eval.get("pnl_payoff_ratio").as_float().unwrap();
                 let profit_factor = eval.get("pnl_profit_factor").as_float().unwrap();
                 let win_rate = eval.get("pnl_win_rate").as_percent().unwrap();
                 let longs_enabled = eval.get("pnl_longs_enabled").as_bool().unwrap();
@@ -124,6 +125,7 @@ impl Evaluator {
                     rank: 0,
                     symbol,
                     alpha_score,
+                    payoff_ratio,
                     profit_factor,
                     trades_taken: (trades_taken / total_trades) * 100.0,
                     win_rate: win_rate * 100.0,
@@ -164,6 +166,8 @@ pub struct EvalRank {
     pub symbol: String,
     /// The alpha score computed by the [ProfitLossMetric].
     pub alpha_score: f64,
+    /// The payoff ratio computed by the [ProfitLossMetric].
+    pub payoff_ratio: f64,
     /// The profit factor computed by the [ProfitLossMetric].
     pub profit_factor: f64,
     /// The trades taken computed by the [ProfitLossMetric].
@@ -183,6 +187,11 @@ impl Display for EvalRank {
             f,
             "      Alpha Score: {}",
             math::round_to(self.alpha_score, 2)
+        )?;
+        writeln!(
+            f,
+            "      Payoff Ratio: {}",
+            math::round_to(self.payoff_ratio, 2)
         )?;
         writeln!(
             f,
