@@ -4,11 +4,25 @@ use crate::data::{DataKey, StockData};
 use crate::eval::EvalRank;
 use crate::score::final_score::{Decision, FinalScore};
 use crate::{engine, math, utils};
+use ibapi::accounts::AccountSummaryTags;
 use ibapi::orders::{Action, OcaType, Order, TimeInForce};
 use std::fmt::{Display, Formatter};
+use std::time::Duration;
 
 /// The minimum alpha score required for a symbol to be considered for trading.
 const MIN_ALPHA_SCORE: f64 = 5.0;
+
+/// The percentage of total account equity risked per trade (1%).
+const RISK_PER_TRADE: f64 = 0.01;
+
+/// The maximum percentage of total equity allowed in a single position (20%).
+const MAX_ALLOCATION_PER_TRADE: f64 = 0.20;
+
+/// The maximum total risk across all open positions.
+const MAX_PORTFOLIO_HEAT: f64 = 0.15;
+
+/// Minimum USD risk required to take a trade (prevents trading if account is too small).
+const MIN_RISK_USD: f64 = 10.0;
 
 /// Trade with the interface.
 pub async fn trade(cli: Cli, args: TradeArgs) {
@@ -34,7 +48,6 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
         .collect::<Vec<_>>();
 
     let mut trades = Vec::with_capacity(symbols.len());
-
     let client = utils::client(cli.paper).await;
 
     for rank in symbols {
@@ -63,29 +76,23 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
             if rank.longs_enabled && score.decision == Decision::Long {
                 let sl_dist = exits.sl_distance[last_idx];
                 let tp_dist = exits.tp_distance[last_idx];
-
-                let sl = entry_price - sl_dist;
-                let tp = entry_price + tp_dist;
-
-                (Decision::Long, sl, tp)
+                (Decision::Long, entry_price - sl_dist, entry_price + tp_dist)
             } else if rank.shorts_enabled && score.decision == Decision::Short {
                 let sl_dist = exits.sl_distance[last_idx];
                 let tp_dist = exits.tp_distance[last_idx];
-
-                let sl = entry_price + sl_dist;
-                let tp = entry_price - tp_dist;
-
-                (Decision::Short, sl, tp)
+                (
+                    Decision::Short,
+                    entry_price + sl_dist,
+                    entry_price - tp_dist,
+                )
             } else {
                 (Decision::Neutral, 0.0, 0.0)
             };
 
         let mut specifics = Vec::with_capacity(2);
-
         if !rank.longs_enabled {
             specifics.push("no longs".to_string());
         }
-
         if !rank.shorts_enabled {
             specifics.push("no shorts".to_string());
         }
@@ -103,12 +110,28 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
     }
 
     tracing::info!("[######################### TRADES #########################]");
-
     for trade in &trades {
         println!("{trade}");
     }
 
     if utils::prompt_confirm("Proceed with trades?") {
+        let account_equity = fetch_account_equity(&client).await;
+        if account_equity <= 0.0 {
+            tracing::error!(
+                "Failed to determine account equity. Please check your API connection. Aborting."
+            );
+            return;
+        }
+        tracing::info!("Current Account Equity: ${:.2}", account_equity);
+
+        let open_positions = fetch_open_position_count(&client).await;
+        let mut current_heat = open_positions as f64 * RISK_PER_TRADE;
+        tracing::info!(
+            "Current Open Positions: {} | Current Portfolio Heat: {:.1}%",
+            open_positions,
+            current_heat * 100.0
+        );
+
         let mut current_id = client.next_valid_order_id().await.unwrap();
 
         for trade in trades {
@@ -117,27 +140,49 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 continue;
             }
 
-            tracing::info!("Trading: {trade:#?}");
-            let quantity = utils::prompt_float("How much to trade?");
-
-            if quantity <= 0.0 {
-                tracing::info!("Quantity <= 0.0. Skipping trade...");
+            if current_heat + RISK_PER_TRADE > MAX_PORTFOLIO_HEAT {
+                tracing::warn!(
+                    "Skipping '{}'. Portfolio Heat limit reached ({:.1}% + {:.1}% > {:.1}%).",
+                    trade.symbol,
+                    current_heat * 100.0,
+                    RISK_PER_TRADE * 100.0,
+                    MAX_PORTFOLIO_HEAT * 100.0
+                );
                 continue;
             }
 
-            tracing::info!("Executing Order for '{}'...", trade.symbol);
+            tracing::info!("Trading: {trade:#?}");
 
+            let quantity =
+                match calculate_quantity(account_equity, trade.entry_price, trade.stop_loss) {
+                    Some(q) => q,
+                    None => {
+                        tracing::info!(
+                            "Skipping '{}' due to position sizing constraints.",
+                            trade.symbol
+                        );
+                        continue;
+                    }
+                };
+
+            let risk_usd = (trade.entry_price - trade.stop_loss).abs() * quantity;
+            tracing::info!(
+                "Automated Sizing for {}: {} shares (Risk: ${:.2}, Cost: ${:.2})",
+                trade.symbol,
+                quantity,
+                risk_usd,
+                quantity * trade.entry_price
+            );
+
+            tracing::info!("Executing Order for '{}'...", trade.symbol);
             let contract = utils::contract(&trade.symbol);
 
             let parent_id = current_id;
             current_id += 1;
-
             let tp_id = current_id;
             current_id += 1;
-
             let sl_id = current_id;
             current_id += 1;
-
             let time_exit_id = current_id;
             current_id += 1;
 
@@ -150,7 +195,6 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
             let gat_string = format!("{} 15:50:00 US/Eastern", target_end_date.format("%Y%m%d"));
             let oca_group = format!("OCA_{}_{}", trade.symbol, parent_id);
 
-            // Parent Entry Order
             let parent = Order {
                 order_id: parent_id,
                 action: entry_action,
@@ -161,7 +205,6 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 ..Default::default()
             };
 
-            // Take Profit Child Order
             let take_profit = Order {
                 order_id: tp_id,
                 action: exit_action,
@@ -176,7 +219,6 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 ..Default::default()
             };
 
-            // Stop Loss Child Order
             let stop_loss = Order {
                 order_id: sl_id,
                 action: exit_action,
@@ -191,7 +233,6 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 ..Default::default()
             };
 
-            // Time Exit Child Order
             let time_exit = Order {
                 order_id: time_exit_id,
                 action: exit_action,
@@ -224,17 +265,104 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 .expect("Failed to place Time Exit");
 
             tracing::info!("Orders for '{}' placed successfully.", trade.symbol);
+
+            current_heat += RISK_PER_TRADE;
         }
 
         tracing::info!(
             "Orders successfully submitted to IBKR. Keeping connection alive for 5 seconds to allow processing..."
         );
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
 
         tracing::info!("Execution complete.");
     } else {
         tracing::info!("Aborting trades...");
     }
+}
+
+async fn fetch_account_equity(client: &ibapi::Client) -> f64 {
+    let group = "All".into();
+
+    let mut sub = match client
+        .account_summary(&group, &[AccountSummaryTags::NET_LIQUIDATION])
+        .await
+    {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::error!("Failed to subscribe to account summary: {:?}", e);
+            return 0.0;
+        }
+    };
+
+    let results = sub.collect_for(Duration::from_secs(2)).await;
+
+    sub.cancel().await;
+
+    for result in results {
+        if let ibapi::accounts::AccountSummaryResult::Summary(summary) = result
+            && summary.tag == AccountSummaryTags::NET_LIQUIDATION
+            && (summary.currency == "USD"
+                || summary.currency == "BASE"
+                || summary.currency == "EUR")
+            && let Ok(val) = summary.value.parse::<f64>()
+        {
+            return val;
+        }
+    }
+
+    tracing::warn!("Could not find NetLiquidation in account summary.");
+    0.0
+}
+
+async fn fetch_open_position_count(client: &ibapi::Client) -> usize {
+    let mut sub = match client.positions().await {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::error!("Failed to subscribe to positions: {:?}", e);
+            return 0;
+        }
+    };
+
+    let results = sub.collect_for(Duration::from_secs(2)).await;
+    sub.cancel().await;
+
+    results.len()
+}
+
+fn calculate_quantity(account_equity: f64, entry_price: f64, stop_loss_price: f64) -> Option<f64> {
+    let risk_amount = account_equity * RISK_PER_TRADE;
+
+    if risk_amount < MIN_RISK_USD {
+        tracing::warn!("Account equity too low to safely risk ${MIN_RISK_USD}. Skipping.");
+        return None;
+    }
+
+    let stop_distance = (entry_price - stop_loss_price).abs();
+
+    if stop_distance < 1e-9 {
+        tracing::warn!("Stop distance is zero. Skipping.");
+        return None;
+    }
+
+    let raw_shares = risk_amount / stop_distance;
+    let position_cost = raw_shares * entry_price;
+    let max_allowed_cost = account_equity * MAX_ALLOCATION_PER_TRADE;
+
+    let final_shares = if position_cost > max_allowed_cost {
+        let capped_shares = max_allowed_cost / entry_price;
+        capped_shares.floor()
+    } else {
+        raw_shares.floor()
+    };
+
+    if final_shares < 1.0 {
+        tracing::warn!(
+            "Calculated quantity is < 1 share. Stop loss is too wide for current equity."
+        );
+        return None;
+    }
+
+    Some(final_shares)
 }
 
 #[derive(Debug)]
@@ -270,10 +398,8 @@ impl Display for Trade {
             "      Alpha Score: {}",
             math::round_to(self.alpha_score, 2)
         )?;
-
         let specifics = self.specifics.join(", ");
         writeln!(f, "      Specifics: [ {specifics} ]")?;
-
         Ok(())
     }
 }
@@ -291,11 +417,7 @@ fn find_latest_data() -> String {
                 let file = entry.file_name();
                 let file = file.to_str().expect("Failed to get file name");
 
-                if let Some(date_str) = file.strip_suffix(".json") {
-                    Some(utils::parse_naive_date(date_str))
-                } else {
-                    None
-                }
+                file.strip_suffix(".json").map(utils::parse_naive_date)
             } else {
                 None
             }
@@ -304,6 +426,5 @@ fn find_latest_data() -> String {
         .expect("No valid data found");
 
     let date = utils::format_naive_date(latest);
-
     format!("eval/{date}.json")
 }

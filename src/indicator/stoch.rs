@@ -108,8 +108,7 @@ impl<const PERIOD: usize, const SMOOTH: usize> Indicator for Stochastic<PERIOD, 
             let mut sum = 0.0;
             let mut valid = true;
 
-            for j in start..=i {
-                let val = self.k[j];
+            for val in self.k.iter().take(i + 1).skip(start) {
                 if !val.is_finite() {
                     valid = false;
                     break;

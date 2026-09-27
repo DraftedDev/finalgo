@@ -61,13 +61,6 @@ pub fn prompt_confirm(msg: impl Display) -> bool {
     })
 }
 
-pub fn prompt_float(msg: impl Display) -> f64 {
-    prompt(format!("{msg} [float]"), |s| {
-        s.parse::<f64>()
-            .map_err(|_| "Failed to parse float".to_string())
-    })
-}
-
 /// Prompts the user for input.
 pub fn prompt<T>(prompt: impl Display, parse: impl Fn(&str) -> Result<T, String>) -> T {
     let mut input = String::with_capacity(4);
