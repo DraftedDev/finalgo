@@ -13,13 +13,13 @@ use std::time::Duration;
 const MIN_ALPHA_SCORE: f64 = 5.0;
 
 /// The percentage of total account equity risked per trade (1%).
-const RISK_PER_TRADE: f64 = 0.01;
+const RISK_PER_TRADE: f64 = 0.02;
 
 /// The maximum percentage of total equity allowed in a single position (20%).
-const MAX_ALLOCATION_PER_TRADE: f64 = 0.20;
+const MAX_ALLOCATION_PER_TRADE: f64 = 0.2;
 
 /// The maximum total risk across all open positions.
-const MAX_PORTFOLIO_HEAT: f64 = 0.15;
+const MAX_PORTFOLIO_HEAT: f64 = 0.2;
 
 /// Minimum USD risk required to take a trade (prevents trading if account is too small).
 const MIN_RISK_USD: f64 = 10.0;
