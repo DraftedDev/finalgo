@@ -73,6 +73,13 @@ fn main() {
         cli.paper = true;
     }
 
+    ibapi::register_timezone_alias("MEZ", "Europe/Berlin");
+    ibapi::register_timezone_alias("MESZ", "Europe/Berlin");
+    ibapi::register_timezone_alias("CET", "Europe/Berlin");
+    ibapi::register_timezone_alias("CEST", "Europe/Berlin");
+    ibapi::register_timezone_alias("EST", "America/New_York");
+    ibapi::register_timezone_alias("EDT", "America/New_York");
+
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

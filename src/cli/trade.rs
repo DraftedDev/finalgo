@@ -200,7 +200,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 action: entry_action,
                 total_quantity: quantity,
                 order_type: "MKT".to_string(),
-                tif: TimeInForce::GoodTilCanceled,
+                tif: TimeInForce::GoodTillCanceled,
                 transmit: false,
                 ..Default::default()
             };
@@ -214,7 +214,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 parent_id,
                 oca_group: oca_group.clone(),
                 oca_type: OcaType::CancelWithBlock,
-                tif: TimeInForce::GoodTilCanceled,
+                tif: TimeInForce::GoodTillCanceled,
                 transmit: false,
                 ..Default::default()
             };
@@ -228,7 +228,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 parent_id,
                 oca_group: oca_group.clone(),
                 oca_type: OcaType::CancelWithBlock,
-                tif: TimeInForce::GoodTilCanceled,
+                tif: TimeInForce::GoodTillCanceled,
                 transmit: false,
                 ..Default::default()
             };
@@ -241,7 +241,7 @@ pub async fn trade(cli: Cli, args: TradeArgs) {
                 parent_id,
                 oca_group: oca_group.clone(),
                 oca_type: OcaType::CancelWithBlock,
-                tif: TimeInForce::GoodTilCanceled,
+                tif: TimeInForce::GoodTillCanceled,
                 good_after_time: gat_string,
                 transmit: true,
                 ..Default::default()
